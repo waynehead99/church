@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container">
+    <h2 class="mb-4">Your Registrations</h2>
+    <div class="row mb-4">
+        <div class="col">
+            <a href="{{ url_for('submit_form') }}" class="btn btn-primary">Submit New Registration</a>
+        </div>
+    </div>
+
+    <h3>Your Form Submissions</h3>
+    {% if forms %}
+        <div class="accordion" id="submissionsAccordion">
+            {% for form in forms %}
+            <div class="accordion-item">
+                <h2 class="accordion-header" id="heading{{ form.id }}">
+                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" 
+                            data-bs-target="#collapse{{ form.id }}" aria-expanded="false" 
+                            aria-controls="collapse{{ form.id }}">
+                        {{ form.event_name }} - {{ form.student_name }} (Submitted: {{ form.date_submitted.strftime('%Y-%m-%d %H:%M') }})
+                    </button>
+                </h2>
+                <div id="collapse{{ form.id }}" class="accordion-collapse collapse" 
+                     aria-labelledby="heading{{ form.id }}" data-bs-parent="#submissionsAccordion">
+                    <div class="accordion-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h5>Event Information</h5>
+                                <p><strong>Event:</strong> {{ form.event_name }}<br>
+                                <strong>Cost:</strong> {{ form.event_cost }}</p>
+
+                                <h5>Student Information</h5>
+                                <p>
+                                    <strong>Name:</strong> {{ form.student_name }}<br>
+                                    <strong>Date of Birth:</strong> {{ form.date_of_birth }}<br>
+                                    <strong>Address:</strong> {{ form.street }}, {{ form.city }}, {{ form.zip_code }}
+                                </p>
+
+                                <h5>Contact Information</h5>
+                                <p>
+                                    <strong>Parent/Guardian:</strong> {{ form.parent_guardian }}<br>
+                                    <strong>Cell Phone:</strong> {{ form.parent_cell_phone }}<br>
+                                    <strong>Home Phone:</strong> {{ form.home_phone }}<br>
+                                    <strong>Emergency Contact:</strong> {{ form.emergency_contact }}<br>
+                                    <strong>Emergency Phone:</strong> {{ form.emergency_phone }}
+                                </p>
+                            </div>
+                            <div class="col-md-6">
+                                <h5>Medical Information</h5>
+                                <p>
+                                    <strong>Current Treatment:</strong> {{ 'Yes' if form.current_treatment else 'No' }}<br>
+                                    {% if form.current_treatment %}
+                                        <strong>Treatment Details:</strong> {{ form.treatment_details }}<br>
+                                    {% endif %}
+                                    
+                                    <strong>Physical Restrictions:</strong> {{ 'Yes' if form.physical_restrictions else 'No' }}<br>
+                                    {% if form.physical_restrictions %}
+                                        <strong>Restriction Details:</strong> {{ form.restriction_details }}<br>
+                                    {% endif %}
+                                </p>
+
+                                <p>
+                                    <strong>Family Doctor:</strong> {{ form.family_doctor }}<br>
+                                    <strong>Doctor Phone:</strong> {{ form.doctor_phone }}<br>
+                                    <strong>Insurance Company:</strong> {{ form.insurance_company }}<br>
+                                    <strong>Policy Number:</strong> {{ form.policy_number }}
+                                </p>
+
+                                <h5>Releases</h5>
+                                <p>
+                                    <strong>Photo/Video Release:</strong> {{ 'Granted' if form.photo_release else 'Not Granted' }}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <p>No form submissions yet.</p>
+    {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,31 @@
+{% if forms %}
+<h4>Forms submitted by {{ user.email }}</h4>
+<div class="table-responsive">
+    <table class="table table-sm">
+        <thead>
+            <tr>
+                <th>Form Type</th>
+                <th>Submission Date</th>
+                <th>Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for form in forms %}
+            <tr>
+                <td>{{ form.form_type }}</td>
+                <td>{{ form.submission_date.strftime('%Y-%m-%d %H:%M') }}</td>
+                <td>
+                    <span class="badge bg-{{ 'success' if form.status == 'approved' else 'warning' if form.status == 'pending' else 'danger' }}">
+                        {{ form.status|title }}
+                    </span>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<div class="alert alert-info">
+    No forms submitted by this user yet.
+</div>
+{% endif %}

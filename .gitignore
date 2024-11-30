@@ -1,0 +1,28 @@
+# Log files
+remoteexthist.log
+git.log
+app.log
+
+# Python virtual environment
+venv/
+
+# Database
+*.db
+
+# Python cache files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Environment variables
+.env
+
+# IDE specific files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS specific files
+.DS_Store
+Thumbs.db

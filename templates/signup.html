@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="auth-container">
+    <h2 class="text-center mb-4">Sign Up</h2>
+    <form method="POST">
+        <div class="mb-3">
+            <label for="email" class="form-label">Email address</label>
+            <input type="email" class="form-control" id="email" name="email" required>
+        </div>
+        <div class="mb-3">
+            <label for="password" class="form-label">Password</label>
+            <input type="password" class="form-control" id="password" name="password" required>
+            <div class="password-strength mt-2">
+                <div class="progress">
+                    <div class="progress-bar" role="progressbar" style="width: 0%"></div>
+                </div>
+                <small class="form-text text-muted">
+                    Password must:
+                    <ul>
+                        <li>Be at least 8 characters long</li>
+                        <li>Contain at least one uppercase letter</li>
+                        <li>Contain at least one lowercase letter</li>
+                        <li>Contain at least one number</li>
+                        <li>Contain at least one special character</li>
+                    </ul>
+                </small>
+            </div>
+        </div>
+        <div class="mb-3">
+            <label for="confirm_password" class="form-label">Confirm Password</label>
+            <input type="password" class="form-control" id="confirm_password" name="confirm_password" required>
+            <div id="password-match-feedback" class="form-text"></div>
+        </div>
+        <button type="submit" class="btn btn-primary w-100">Sign Up</button>
+    </form>
+    <p class="text-center mt-3">
+        Already have an account? <a href="{{ url_for('login') }}">Login</a>
+    </p>
+</div>
+
+<script>
+document.getElementById('password').addEventListener('input', function(e) {
+    const password = e.target.value;
+    fetch('/api/password-strength', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({password: password})
+    })
+    .then(response => response.json())
+    .then(data => {
+        const progressBar = document.querySelector('.progress-bar');
+        progressBar.style.width = data.strength + '%';
+        
+        // Update progress bar color based on strength
+        if (data.strength < 50) {
+            progressBar.className = 'progress-bar bg-danger';
+        } else if (data.strength < 75) {
+            progressBar.className = 'progress-bar bg-warning';
+        } else {
+            progressBar.className = 'progress-bar bg-success';
+        }
+    });
+    checkPasswordMatch();
+});
+
+document.getElementById('confirm_password').addEventListener('input', checkPasswordMatch);
+
+function checkPasswordMatch() {
+    const password = document.getElementById('password').value;
+    const confirmPassword = document.getElementById('confirm_password').value;
+    const feedback = document.getElementById('password-match-feedback');
+    
+    if (confirmPassword) {
+        if (password === confirmPassword) {
+            feedback.className = 'form-text text-success';
+            feedback.textContent = 'Passwords match';
+        } else {
+            feedback.className = 'form-text text-danger';
+            feedback.textContent = 'Passwords do not match';
+        }
+    } else {
+        feedback.textContent = '';
+    }
+}
+</script>
+{% endblock %}

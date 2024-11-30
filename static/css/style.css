@@ -1,0 +1,260 @@
+:root {
+    --reclaim-red: #E63946;
+    --reclaim-black: #000000;
+    --reclaim-gold: #C5B358;
+    --reclaim-gray: #f8f9fa;
+}
+
+/* Responsive Typography */
+html {
+    font-size: 16px;
+}
+
+@media (max-width: 768px) {
+    html {
+        font-size: 14px;
+    }
+}
+
+/* Base Styles */
+body {
+    background-color: var(--reclaim-gray);
+    overflow-x: hidden;
+}
+
+/* Responsive Container */
+.container {
+    padding-left: max(15px, 5vw);
+    padding-right: max(15px, 5vw);
+}
+
+/* Navbar Styles */
+.navbar {
+    background-color: var(--reclaim-black) !important;
+    padding: 1rem max(15px, 5vw);
+}
+
+.navbar-brand {
+    color: var(--reclaim-gold) !important;
+    font-size: clamp(1.2rem, 3vw, 1.5rem);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.navbar-brand img {
+    height: clamp(30px, 5vw, 40px);
+    width: auto;
+}
+
+.nav-link {
+    color: var(--reclaim-gold) !important;
+}
+
+.nav-link:hover {
+    color: white !important;
+}
+
+@media (max-width: 768px) {
+    .navbar-brand {
+        font-size: 1.2rem;
+    }
+}
+
+/* Form Containers */
+.form-container {
+    width: 100%;
+    max-width: min(800px, 90vw);
+    margin: clamp(1rem, 5vh, 2rem) auto;
+    padding: clamp(1rem, 3vw, 2rem);
+    border-radius: 10px;
+    box-shadow: 0 0 20px rgba(0,0,0,0.1);
+    background-color: white;
+}
+
+.auth-container {
+    width: 100%;
+    max-width: min(400px, 90vw);
+    margin: clamp(1rem, 5vh, 2rem) auto;
+    padding: clamp(1rem, 3vw, 2rem);
+}
+
+/* Form Elements */
+.form-group {
+    margin-bottom: 1.5rem;
+}
+
+.form-label {
+    font-weight: 500;
+    margin-bottom: 0.5rem;
+}
+
+/* Grid System for Forms */
+.form-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1rem;
+}
+
+/* Buttons */
+.btn {
+    padding: 0.5rem 1.5rem;
+    font-size: clamp(0.875rem, 2vw, 1rem);
+    white-space: nowrap;
+}
+
+.btn-primary {
+    background-color: var(--reclaim-red);
+    border-color: var(--reclaim-red);
+}
+
+.btn-primary:hover {
+    background-color: #d32836;
+    border-color: #d32836;
+}
+
+.btn-outline-primary {
+    color: var(--reclaim-red);
+    border-color: var(--reclaim-red);
+}
+
+.btn-outline-primary:hover {
+    background-color: var(--reclaim-red);
+    border-color: var(--reclaim-red);
+}
+
+/* Tables */
+.table-responsive {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+/* Cards */
+.card {
+    height: 100%;
+}
+
+.card-body {
+    padding: clamp(1rem, 3vw, 1.5rem);
+}
+
+.card-header {
+    background-color: var(--reclaim-black);
+    color: var(--reclaim-gold);
+}
+
+/* Text Colors */
+.text-primary {
+    color: var(--reclaim-black) !important;
+}
+
+.text-danger {
+    color: var(--reclaim-red) !important;
+}
+
+/* Form Controls */
+.form-control:focus {
+    border-color: var(--reclaim-red);
+    box-shadow: 0 0 0 0.25rem rgba(230, 57, 70, 0.25);
+}
+
+/* Accordion */
+.accordion-button:not(.collapsed) {
+    background-color: var(--reclaim-gray);
+    color: var(--reclaim-black);
+}
+
+.accordion-button:focus {
+    border-color: var(--reclaim-red);
+    box-shadow: 0 0 0 0.25rem rgba(230, 57, 70, 0.25);
+}
+
+/* Alerts */
+.alert {
+    margin: 1rem auto;
+    max-width: min(800px, 90vw);
+}
+
+.alert-info {
+    background-color: var(--reclaim-gray);
+    border-color: var(--reclaim-gold);
+    color: var(--reclaim-black);
+}
+
+/* Signature Pad */
+.signature-container {
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    background-color: #fff;
+    margin-bottom: 1rem;
+}
+
+.signature-pad {
+    background-color: #fff;
+    border: 1px solid #dee2e6;
+    height: 150px;
+    touch-action: none;
+}
+
+#photo-signature-section {
+    transition: all 0.3s ease;
+}
+
+.signature-pad-label {
+    font-weight: 500;
+    color: var(--reclaim-black);
+    margin-bottom: 0.5rem;
+}
+
+/* Admin Dashboard */
+.admin-container {
+    max-width: 1200px;
+    margin: 2rem auto;
+    padding: 0 1rem;
+}
+
+.admin-container .card {
+    box-shadow: 0 0 20px rgba(0,0,0,0.1);
+}
+
+.admin-container .table th {
+    background-color: var(--reclaim-black);
+    color: var(--reclaim-gold);
+    font-weight: 500;
+}
+
+.admin-container .table td {
+    vertical-align: middle;
+}
+
+.admin-container .modal-header {
+    background-color: var(--reclaim-black);
+    color: var(--reclaim-gold);
+}
+
+.admin-container .modal-body h6 {
+    color: var(--reclaim-black);
+    font-weight: 600;
+    margin-bottom: 1rem;
+}
+
+.admin-container .badge {
+    padding: 0.5em 0.75em;
+}
+
+.admin-container .btn-sm {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.875rem;
+}
+
+/* Print Styles */
+@media print {
+    .no-print {
+        display: none !important;
+    }
+    .form-container, .auth-container {
+        box-shadow: none;
+        margin: 0;
+        padding: 0;
+    }
+}

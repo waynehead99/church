@@ -1,0 +1,214 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="admin-container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>Admin Dashboard</h2>
+        <div>
+            <a href="{{ url_for('admin.user_management') }}" class="btn btn-info me-2">
+                <i class="fas fa-users me-2"></i>User Management
+            </a>
+            <a href="{{ url_for('admin.export_data') }}" class="btn btn-primary">
+                <i class="fas fa-download me-2"></i>Export to CSV
+            </a>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <h3 class="card-title mb-0">Winter Camp Registrations</h3>
+        </div>
+        <div class="card-body">
+            <div class="row mb-3">
+                <div class="col-md">
+                    <input type="text" class="form-control" id="studentSearch" placeholder="Search Student Name">
+                </div>
+                <div class="col-md">
+                    <input type="text" class="form-control" id="parentSearch" placeholder="Search Parent/Guardian">
+                </div>
+                <div class="col-md">
+                    <input type="text" class="form-control" id="emailSearch" placeholder="Search Email">
+                </div>
+                <div class="col-md">
+                    <input type="text" class="form-control" id="phoneSearch" placeholder="Search Phone">
+                </div>
+                <div class="col-md">
+                    <select class="form-select" id="paymentSearch">
+                        <option value="">All Payment Status</option>
+                        <option value="paid">Paid</option>
+                        <option value="pending">Pending</option>
+                    </select>
+                </div>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-striped table-hover">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Student Name</th>
+                            <th>Parent/Guardian</th>
+                            <th>Email</th>
+                            <th>Phone</th>
+                            <th>Payment</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for reg in registrations %}
+                        <tr data-form-id="{{ reg.id }}">
+                            <td>{{ reg.date_submitted.strftime('%Y-%m-%d') }}</td>
+                            <td>{{ reg.student_name }}</td>
+                            <td>{{ reg.parent_guardian }}</td>
+                            <td>{{ reg.user.email }}</td>
+                            <td>{{ reg.parent_cell_phone }}</td>
+                            <td>
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input payment-toggle" type="checkbox" 
+                                           id="payment{{ reg.id }}" 
+                                           {% if reg.payment_status %}checked{% endif %}
+                                           data-form-id="{{ reg.id }}">
+                                    <label class="form-check-label" for="payment{{ reg.id }}">
+                                        <span class="payment-status-{{ reg.id }}">
+                                            {% if reg.payment_status %}
+                                            <span class="badge bg-success">Paid</span>
+                                            {% else %}
+                                            <span class="badge bg-warning text-dark">Pending</span>
+                                            {% endif %}
+                                        </span>
+                                    </label>
+                                </div>
+                            </td>
+                            <td>
+                                <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#detailsModal{{ reg.id }}">
+                                    View Details
+                                </button>
+                            </td>
+                        </tr>
+
+                        <!-- Details Modal -->
+                        <div class="modal fade" id="detailsModal{{ reg.id }}" tabindex="-1">
+                            <div class="modal-dialog modal-lg">
+                                <div class="modal-content">
+                                    <div class="modal-header">
+                                        <h5 class="modal-title">Registration Details</h5>
+                                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                    </div>
+                                    <div class="modal-body">
+                                        <div class="row g-3">
+                                            <div class="col-md-6">
+                                                <h6>Student Information</h6>
+                                                <p><strong>Name:</strong> {{ reg.student_name }}</p>
+                                                <p><strong>Date of Birth:</strong> {{ reg.date_of_birth }}</p>
+                                                <p><strong>Address:</strong><br>
+                                                    {{ reg.street }}<br>
+                                                    {{ reg.city }}, {{ reg.zip_code }}
+                                                </p>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <h6>Contact Information</h6>
+                                                <p><strong>Parent/Guardian:</strong> {{ reg.parent_guardian }}</p>
+                                                <p><strong>Cell Phone:</strong> {{ reg.parent_cell_phone }}</p>
+                                                <p><strong>Home Phone:</strong> {{ reg.home_phone }}</p>
+                                                <p><strong>Emergency Contact:</strong> {{ reg.emergency_contact }}</p>
+                                                <p><strong>Emergency Phone:</strong> {{ reg.emergency_phone }}</p>
+                                            </div>
+                                            <div class="col-12">
+                                                <hr>
+                                                <h6>Medical Information</h6>
+                                                <div class="row">
+                                                    <div class="col-md-6">
+                                                        <p><strong>Current Treatment:</strong> {{ 'Yes' if reg.current_treatment else 'No' }}</p>
+                                                        {% if reg.current_treatment %}
+                                                            <p><strong>Details:</strong> {{ reg.treatment_details }}</p>
+                                                        {% endif %}
+                                                        <p><strong>Physical Restrictions:</strong> {{ 'Yes' if reg.physical_restrictions else 'No' }}</p>
+                                                        {% if reg.physical_restrictions %}
+                                                            <p><strong>Details:</strong> {{ reg.restriction_details }}</p>
+                                                        {% endif %}
+                                                    </div>
+                                                    <div class="col-md-6">
+                                                        <p><strong>Family Doctor:</strong> {{ reg.family_doctor }}</p>
+                                                        <p><strong>Doctor Phone:</strong> {{ reg.doctor_phone }}</p>
+                                                        <p><strong>Insurance Company:</strong> {{ reg.insurance_company }}</p>
+                                                        <p><strong>Policy Number:</strong> {{ reg.policy_number }}</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="col-12">
+                                                <hr>
+                                                <h6>Permissions</h6>
+                                                <p><strong>Photo Release:</strong> {{ 'Yes' if reg.photo_release else 'No' }}</p>
+                                                {% if reg.liability_signature %}
+                                                    <p><strong>Liability Waiver:</strong> Signed</p>
+                                                {% endif %}
+                                                {% if reg.photo_release and reg.photo_signature %}
+                                                    <p><strong>Photo Release:</strong> Signed</p>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    $(document).ready(function() {
+        function filterTable() {
+            console.log('Filtering table...');
+            const studentFilter = $('#studentSearch').val().toLowerCase();
+            const parentFilter = $('#parentSearch').val().toLowerCase();
+            const emailFilter = $('#emailSearch').val().toLowerCase();
+            const phoneFilter = $('#phoneSearch').val().toLowerCase();
+            const paymentFilter = $('#paymentSearch').val().toLowerCase();
+
+            let visibleCount = 0;
+
+            $('table tbody tr').each(function() {
+                const $row = $(this);
+                try {
+                    const studentName = $row.find('td:eq(1)').text().toLowerCase();
+                    const parentName = $row.find('td:eq(2)').text().toLowerCase();
+                    const email = $row.find('td:eq(3)').text().toLowerCase();
+                    const phone = $row.find('td:eq(4)').text().toLowerCase();
+                    const paymentStatus = $row.find('td:eq(5) .badge').text().toLowerCase();
+
+                    const matches = 
+                        studentName.includes(studentFilter) &&
+                        parentName.includes(parentFilter) &&
+                        email.includes(emailFilter) &&
+                        phone.includes(phoneFilter) &&
+                        (paymentFilter === '' || paymentStatus.includes(paymentFilter));
+
+                    $row.toggle(matches);
+                    if (matches) visibleCount++;
+                } catch (error) {
+                    console.error('Error processing row:', error, $row);
+                }
+            });
+            
+            console.log(`Filtered table - ${visibleCount} rows visible`);
+        }
+
+        // Add event listeners to search inputs
+        $('#studentSearch, #parentSearch, #emailSearch, #phoneSearch, #paymentSearch').on('input change', function() {
+            console.log('Search input changed:', $(this).attr('id'));
+            filterTable();
+        });
+
+        // Initial filter
+        filterTable();
+    });
+</script>
+{% endblock %}

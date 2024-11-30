@@ -1,0 +1,246 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="form-container">
+    <div class="text-center mb-4">
+        <img src="{{ url_for('static', filename='images/logo.png') }}" alt="Reclaim Student Ministry" class="mb-3" style="max-width: 200px;">
+        <h2 class="text-primary">Winter Camp 2025 Registration</h2>
+        <h4>January 31-February 3 | Golden Bell Camp</h4>
+        <h4>Cost: $150</h4>
+    </div>
+
+    <!-- Event Details -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">Event Information</h5>
+        </div>
+        <div class="card-body">
+            <p>Students, grades 7th-12th, come join Parker Bible Church, Cross and Crown Church, Southside Bible Church, and Parker Hills Bible Fellowship for a jam packed weekend of teaching and activities. Our four churches have partnered together for this event because we share common commitments to expository preaching, discipleship, and rich conservative theology. Youth Pastors from all four churches will preach during the weekend and worship will be led by Cross and Crown Church.</p>
+            
+            <h5 class="mt-4">Theme: The Seriousness of Sin</h5>
+            <p>Our teaching focus will be "The Seriousness of Sin." This topic is of timeless importance for both believer and unbeliever alike. Students will be called to consider sin and the avenue God has laid for forgiveness from it. This is not just a one-time topic. Christians spend the rest of this earthly life battling sin and longing for final victory. We will have several sermons covering these topics as well.</p>
+
+            <h5 class="mt-4">New Location!</h5>
+            <p>For many years our Winter Camp has been held at Ponderosa Camp Grounds. Due to the increased size of our group, we will be going to a new camp ground in 2025. Golden Bell is just outside of Woodland Park and will better accommodate our growing group. You can check out the camp ground at <a href="http://www.goldenbellccc.org" target="_blank">www.goldenbellccc.org</a>.</p>
+
+            <h5 class="mt-4">Packing List:</h5>
+            <ul>
+                <li>Bible and Notebook</li>
+                <li>Sleeping Bag or Twin Bedding</li>
+                <li>Pillow</li>
+                <li>Toiletries</li>
+                <li>Towel</li>
+                <li>Flashlight</li>
+                <li>Warm Clothes</li>
+                <li>Athletic Clothes</li>
+                <li>Swimming Suit (1 piece for girls with athletic shorts)</li>
+                <li>Money for lunch Sunday (Fast food)</li>
+            </ul>
+
+            <h5 class="mt-4">Registration Instructions:</h5>
+            <p>Fill out the separate registration and medical form with all proper signatures and information.</p>
+            <p>Turn in forms and $150 by <strong>January 5th</strong> to church office or in a well marked envelope during offertory in church. Please just make note that it is for the Youth Winter Camp.</p>
+        </div>
+    </div>
+
+    <form method="POST" class="needs-validation" novalidate>
+        <!-- Student Information -->
+        <div class="row mb-4">
+            <div class="col-md-6 mb-3">
+                <label for="student_name" class="form-label">Student Name:</label>
+                <input type="text" class="form-control" id="student_name" name="student_name" placeholder="First Last" pattern="[A-Za-z\s\-']+" required>
+            </div>
+            <div class="col-md-6 mb-3">
+                <label for="date_of_birth" class="form-label">Date of Birth:</label>
+                <input type="date" class="form-control" id="date_of_birth" name="date_of_birth" max="{{ '{{' }} today }}" required>
+            </div>
+        </div>
+
+        <!-- Address Information -->
+        <div class="row mb-4">
+            <div class="col-md-6 mb-3">
+                <label for="street" class="form-label">Street:</label>
+                <input type="text" class="form-control" id="street" name="street" placeholder="123 Main St" required>
+            </div>
+            <div class="col-md-4 mb-3">
+                <label for="city" class="form-label">City:</label>
+                <input type="text" class="form-control" id="city" name="city" placeholder="Parker" pattern="[A-Za-z\s\-']+" required>
+            </div>
+            <div class="col-md-2 mb-3">
+                <label for="zip_code" class="form-label">Zip:</label>
+                <input type="text" class="form-control" id="zip_code" name="zip_code" placeholder="80134" pattern="[0-9]{5}" maxlength="5" required>
+            </div>
+        </div>
+
+        <!-- Contact Information -->
+        <div class="row mb-4">
+            <div class="col-md-6 mb-3">
+                <label for="parent_guardian" class="form-label">Parent/Guardian:</label>
+                <input type="text" class="form-control" id="parent_guardian" name="parent_guardian" placeholder="First Last" pattern="[A-Za-z\s\-']+" required>
+            </div>
+            <div class="col-md-6 mb-3">
+                <label for="parent_cell_phone" class="form-label">Cell phone:</label>
+                <input type="tel" class="form-control" id="parent_cell_phone" name="parent_cell_phone" placeholder="(303) 555-0123" pattern="\(\d{3}\)\s\d{3}-\d{4}" required>
+            </div>
+        </div>
+
+        <div class="row mb-4">
+            <div class="col-md-6 mb-3">
+                <label for="home_phone" class="form-label">Home phone:</label>
+                <input type="tel" class="form-control" id="home_phone" name="home_phone" placeholder="(303) 555-0123" pattern="\(\d{3}\)\s\d{3}-\d{4}">
+            </div>
+            <div class="col-md-6 mb-3">
+                <label for="emergency_contact" class="form-label">Emergency Contact:</label>
+                <input type="text" class="form-control" id="emergency_contact" name="emergency_contact" placeholder="Name: (303) 555-0123" pattern=".+:\s\(\d{3}\)\s\d{3}-\d{4}" required>
+                <div class="form-text">Format: Name: (303) 555-0123</div>
+            </div>
+        </div>
+
+        <!-- Medical Information -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">Medical Information</h5>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <div class="form-check">
+                        <input type="checkbox" class="form-check-input" id="current_treatment" name="current_treatment">
+                        <label class="form-check-label" for="current_treatment">
+                            Is your youth presently being treated for an injury or sickness or taking any medications?
+                        </label>
+                    </div>
+                    <div class="mt-2 treatment-details" style="display: none;">
+                        <label for="treatment_details" class="form-label">If yes please explain:</label>
+                        <textarea class="form-control" id="treatment_details" name="treatment_details" rows="2"></textarea>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <div class="form-check">
+                        <input type="checkbox" class="form-check-input" id="physical_restrictions" name="physical_restrictions">
+                        <label class="form-check-label" for="physical_restrictions">
+                            Does your youth have a physical restriction or illness that will prevent him/her from participating in normal rigorous youth activities?
+                        </label>
+                    </div>
+                    <div class="mt-2 restriction-details" style="display: none;">
+                        <label for="restriction_details" class="form-label">If yes please explain:</label>
+                        <textarea class="form-control" id="restriction_details" name="restriction_details" rows="2"></textarea>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="family_doctor" class="form-label">Family Doctor:</label>
+                        <input type="text" class="form-control" id="family_doctor" name="family_doctor" placeholder="Dr. Smith">
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="doctor_phone" class="form-label">Phone:</label>
+                        <input type="tel" class="form-control" id="doctor_phone" name="doctor_phone" placeholder="(303) 555-0123" pattern="\(\d{3}\)\s\d{3}-\d{4}">
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="insurance_company" class="form-label">Insurance Company:</label>
+                        <input type="text" class="form-control" id="insurance_company" name="insurance_company" placeholder="Insurance Provider">
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="policy_number" class="form-label">Policy Number:</label>
+                        <input type="text" class="form-control" id="policy_number" name="policy_number" placeholder="123-45-6789">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Liability Waiver -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">Liability Waiver</h5>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <p class="small">
+                        I agree to release Cross and Crown Church/Southside Bible Church/Parker Bible Church/Parker Hills
+                        Bible Fellowship and its employees and agents from liability. I also grant permission to Cross and
+                        Crown Church/Southside Bible Church/Parker Bible Church/Parker Hills Bible Fellowship to seek and
+                        obtain medical care in the event of illness or injury. I have therefore read this document carefully
+                        before signing it. I understand that during my child's participation, he/she may participate in several
+                        strenuous activities. Prior to my child's participation, I acknowledge that there are certain risks of
+                        physical injury or illness associated with activities in which I/he/she may participate.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Photo/Video Release -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">Photo/Video Release</h5>
+            </div>
+            <div class="card-body">
+                <div class="form-check mb-3">
+                    <input type="checkbox" class="form-check-input" id="photo_release" name="photo_release">
+                    <label class="form-check-label" for="photo_release">
+                        I recognize that Parker Bible Youth Ministry uses photographs and video images of events in publicity
+                        materials such as the church website and other media and I hereby grant permission for the photo/video
+                        images of my child to be taken and used for such purposes.
+                    </label>
+                </div>
+            </div>
+        </div>
+
+        <!-- Hidden Event Information -->
+        <input type="hidden" name="event_name" value="Winter Camp 2025">
+        <input type="hidden" name="event_cost" value="$150">
+        <!-- Signature Section -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">Signature</h5>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label class="form-label">Please sign to confirm registration:</label>
+                    <canvas id="liability-signature" class="signature-pad border rounded w-100"></canvas>
+                    <button type="button" class="btn btn-sm btn-secondary mt-2" onclick="window.signaturePad.clear()">Clear Signature</button>
+                </div>
+            </div>
+        </div>
+        <button type="submit" class="btn btn-primary w-100">Submit Registration</button>
+    </form>
+</div>
+
+<script>
+    // Form validation
+    (function () {
+        'use strict'
+        var forms = document.querySelectorAll('.needs-validation')
+        Array.prototype.slice.call(forms)
+            .forEach(function (form) {
+                form.addEventListener('submit', function (event) {
+                    if (!form.checkValidity()) {
+                        event.preventDefault()
+                        event.stopPropagation()
+                    }
+                    form.classList.add('was-validated')
+                }, false)
+            })
+    })()
+</script>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/signature.js') }}"></script>
+<script>
+    // Show/hide treatment details based on checkbox
+    document.getElementById('current_treatment').addEventListener('change', function() {
+        const treatmentDetails = document.querySelector('.treatment-details');
+        treatmentDetails.style.display = this.checked ? 'block' : 'none';
+    });
+
+    // Show/hide restriction details based on checkbox
+    document.getElementById('physical_restrictions').addEventListener('change', function() {
+        const restrictionDetails = document.querySelector('.restriction-details');
+        restrictionDetails.style.display = this.checked ? 'block' : 'none';
+    });
+</script>
+{% endblock %}

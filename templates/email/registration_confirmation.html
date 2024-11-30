@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .header {
+            background-color: #4a90e2;
+            color: white;
+            padding: 20px;
+            text-align: center;
+            border-radius: 5px;
+        }
+        .content {
+            padding: 20px;
+            background-color: #f9f9f9;
+            border-radius: 5px;
+            margin-top: 20px;
+        }
+        .section {
+            margin-bottom: 20px;
+        }
+        .section-title {
+            font-weight: bold;
+            color: #4a90e2;
+            margin-bottom: 10px;
+        }
+        .footer {
+            text-align: center;
+            margin-top: 20px;
+            font-size: 0.9em;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Registration Confirmation</h1>
+        <p>{{ event_name }}</p>
+    </div>
+    
+    <div class="content">
+        <p>Dear {{ parent_guardian }},</p>
+        
+        <p>Thank you for registering for {{ event_name }}. This email confirms that we have received your registration for:</p>
+        
+        <div class="section">
+            <div class="section-title">Student Information</div>
+            <p>Student Name: {{ student_name }}<br>
+            Date of Birth: {{ date_of_birth }}</p>
+        </div>
+        
+        <div class="section">
+            <div class="section-title">Event Details</div>
+            <p>Event: {{ event_name }}<br>
+            Cost: {{ event_cost }}<br>
+            Payment Status: {{ "Paid" if payment_status else "Pending" }}</p>
+        </div>
+        
+        <div class="section">
+            <div class="section-title">Contact Information</div>
+            <p>Address: {{ street }}, {{ city }}, {{ zip_code }}<br>
+            Parent/Guardian: {{ parent_guardian }}<br>
+            Cell Phone: {{ parent_cell_phone }}<br>
+            Home Phone: {{ home_phone }}</p>
+        </div>
+        
+        <div class="section">
+            <div class="section-title">Emergency Contact</div>
+            <p>Name: {{ emergency_contact }}<br>
+            Phone: {{ emergency_phone }}</p>
+        </div>
+        
+        {% if current_treatment or physical_restrictions %}
+        <div class="section">
+            <div class="section-title">Medical Information</div>
+            {% if current_treatment %}
+            <p>Current Treatment: Yes<br>
+            Details: {{ treatment_details }}</p>
+            {% endif %}
+            {% if physical_restrictions %}
+            <p>Physical Restrictions: Yes<br>
+            Details: {{ restriction_details }}</p>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+    
+    <div class="footer">
+        <p>If you need to make any changes to this registration, please contact us.</p>
+        <p>Reclaim Student Ministry</p>
+    </div>
+</body>
+</html>
