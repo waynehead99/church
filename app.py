@@ -165,15 +165,7 @@ def send_registration_confirmation(form_data):
         msg.html = render_template(
             'email/registration_confirmation.html',
             student_name=form_data.student_name,
-            date_of_birth=form_data.date_of_birth,location / {
-                proxy_pass http://127.0.0.1:8000;  # Adjust port if different
-                proxy_connect_timeout 300;
-                proxy_send_timeout 300;
-                proxy_read_timeout 300;
-                proxy_buffering off;
-                proxy_set_header Host $host;
-                proxy_set_header X-Real-IP $remote_addr;
-            }
+            date_of_birth=form_data.date_of_birth,
             street=form_data.street,
             city=form_data.city,
             zip_code=form_data.zip_code,
@@ -186,6 +178,13 @@ def send_registration_confirmation(form_data):
             treatment_details=form_data.treatment_details,
             physical_restrictions=form_data.physical_restrictions,
             restriction_details=form_data.restriction_details,
+            family_doctor=form_data.family_doctor,
+            doctor_phone=form_data.doctor_phone,
+            insurance_company=form_data.insurance_company,
+            policy_number=form_data.policy_number,
+            photo_release=form_data.photo_release,
+            liability_signature=form_data.liability_signature,
+            photo_signature=form_data.photo_signature,
             event_name=form_data.event_name,
             event_cost=form_data.event_cost,
             payment_status=form_data.payment_status
