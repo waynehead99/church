@@ -125,6 +125,226 @@ church/
    flask run
    ```
 
+## Linux Installation
+
+### Automated Installation
+
+The easiest way to install the Church Management System is using our automated installation script:
+
+1. **Download the latest release**
+   ```bash
+   git clone https://github.com/your-org/church.git
+   cd church
+   ```
+
+2. **Make the installation script executable**
+   ```bash
+   chmod +x install.sh
+   ```
+
+3. **Run the installation script**
+   ```bash
+   sudo ./install.sh
+   ```
+
+The installation script will:
+- Install all required dependencies
+- Create a dedicated user (church_app)
+- Set up the Python virtual environment
+- Configure Nginx as a reverse proxy
+- Set up the systemd service
+- Initialize the database
+- Configure automatic backups
+
+### Post-Installation Steps
+
+1. **Update Environment Variables**
+   ```bash
+   sudo nano /opt/church/.env
+   ```
+   Update the following settings:
+   - Email configuration (SMTP settings)
+   - Application settings
+   - Backup configuration
+
+2. **Create Admin User**
+   ```bash
+   sudo -u church_app /opt/church/venv/bin/python /opt/church/create_admin.py
+   ```
+
+3. **Check Service Status**
+   ```bash
+   sudo systemctl status church
+   sudo systemctl status nginx
+   ```
+
+### Installation Location
+
+- Application: `/opt/church`
+- Virtual Environment: `/opt/church/venv`
+- Database: `/opt/church/instance/church.db`
+- Uploads: `/opt/church/uploads`
+- Backups: `/opt/church/backups`
+- Logs: `/var/log/church`
+
+### Maintenance Commands
+
+```bash
+# Restart application
+sudo systemctl restart church
+
+# View logs
+sudo journalctl -u church
+
+# Manual backup
+sudo -u church_app /opt/church/backup.sh
+
+# Update application
+cd /opt/church
+sudo -u church_app git pull
+sudo -u church_app /opt/church/venv/bin/pip install -r requirements.txt
+sudo systemctl restart church
+```
+
+### Uninstallation
+
+To remove the Church Management System:
+
+```bash
+# Stop and disable services
+sudo systemctl stop church
+sudo systemctl disable church
+
+# Remove files and user
+sudo rm -rf /opt/church
+sudo userdel -r church_app
+sudo rm /etc/nginx/sites-enabled/church
+sudo rm /etc/nginx/sites-available/church
+sudo rm /etc/systemd/system/church.service
+sudo rm /etc/cron.d/church-backup
+
+# Restart Nginx
+sudo systemctl restart nginx
+```
+
+## Docker Deployment
+
+### Prerequisites
+- Docker Engine 20.10+
+- Docker Compose 2.0+
+- SSL certificates for HTTPS (optional for development)
+
+### Quick Start
+
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/your-org/church.git
+   cd church
+   ```
+
+2. **Set up environment variables**
+   ```bash
+   cp .env.example .env
+   # Edit .env with your configuration
+   ```
+
+3. **SSL Certificates (Optional)**
+   ```bash
+   # Create ssl directory
+   mkdir ssl
+   
+   # For development, generate self-signed certificates
+   openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+     -keyout ssl/key.pem -out ssl/cert.pem
+   
+   # For production, place your real SSL certificates in the ssl directory:
+   # - ssl/cert.pem
+   # - ssl/key.pem
+   ```
+
+4. **Build and start containers**
+   ```bash
+   # Build images
+   docker compose build
+
+   # Start services
+   docker compose up -d
+   ```
+
+5. **Initialize the database**
+   ```bash
+   # Create database tables
+   docker compose exec web flask db upgrade
+
+   # Create admin user
+   docker compose exec web python create_admin.py
+   ```
+
+### Docker Commands
+
+```bash
+# View logs
+docker compose logs -f
+
+# Stop containers
+docker compose down
+
+# Rebuild and restart containers
+docker compose up -d --build
+
+# Execute commands in container
+docker compose exec web flask db upgrade
+docker compose exec web python create_admin.py
+
+# Backup database
+docker compose exec web sqlite3 instance/church.db ".backup '/app/instance/backup.db'"
+```
+
+### Container Structure
+
+- **Web Container**
+  - Python application running with Gunicorn
+  - SQLite database in `/app/instance`
+  - Application logs in stdout/stderr
+
+- **Nginx Container**
+  - Handles SSL termination
+  - Serves static files
+  - Proxies requests to web container
+
+### Volumes
+
+- `./instance:/app/instance`: Persists SQLite database
+- `./ssl:/etc/nginx/ssl`: SSL certificates
+- `./nginx.conf:/etc/nginx/conf.d/default.conf`: Nginx configuration
+
+### Ports
+
+- 80: HTTP (redirects to HTTPS)
+- 443: HTTPS
+- 8000: Gunicorn (internal)
+
+### Production Considerations
+
+1. **SSL Certificates**
+   - Replace self-signed certificates with real ones
+   - Consider using Let's Encrypt with Certbot
+
+2. **Security**
+   - Review and adjust Nginx security headers
+   - Set strong passwords in .env
+   - Keep Docker and dependencies updated
+
+3. **Backups**
+   - Implement regular database backups
+   - Consider volume backups
+   - Test restore procedures
+
+4. **Monitoring**
+   - Use Docker's built-in health checks
+   - Monitor container logs
+   - Set up container metrics monitoring
+
 ## Production Deployment
 
 ### Current Setup
