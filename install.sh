@@ -19,12 +19,6 @@ print_warning() {
     echo -e "${YELLOW}[*]${NC} $1"
 }
 
-# Check if script is run as root
-if [ "$EUID" -ne 0 ]; then
-    print_error "Please run this script as root or with sudo"
-    exit 1
-fi
-
 # Detect Linux distribution
 if [ -f /etc/os-release ]; then
     . /etc/os-release
@@ -82,8 +76,10 @@ setup_user() {
 # Set up Python virtual environment
 setup_venv() {
     print_status "Setting up Python virtual environment..."
-    su - church_app -c "cd $APP_DIR && python3 -m venv venv"
-    su - church_app -c "cd $APP_DIR && source venv/bin/activate && pip install -r requirements.txt"
+    cd "$APP_DIR"
+    python3 -m venv venv
+    chown -R church_app:church_app venv
+    runuser -u church_app -- bash -c "source venv/bin/activate && pip install -r requirements.txt"
 }
 
 # Configure Nginx
@@ -93,7 +89,25 @@ setup_nginx() {
         rm /etc/nginx/sites-enabled/default
     fi
     
-    cp "$APP_DIR/nginx.conf" /etc/nginx/sites-available/church
+    cat > /etc/nginx/sites-available/church << 'EOL'
+server {
+    listen 80;
+    server_name localhost;
+
+    location / {
+        proxy_pass http://127.0.0.1:8000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    location /static/ {
+        alias /opt/church/static/;
+    }
+}
+EOL
+    
     ln -sf /etc/nginx/sites-available/church /etc/nginx/sites-enabled/
     
     # Test Nginx configuration
@@ -135,7 +149,7 @@ EOL
 # Initialize database
 init_database() {
     print_status "Initializing database..."
-    su - church_app -c "cd $APP_DIR && source venv/bin/activate && flask db upgrade"
+    runuser -u church_app -- bash -c "cd $APP_DIR && source venv/bin/activate && flask db upgrade"
     
     # Run configuration script
     if [ -f "$APP_DIR/configure.sh" ]; then
@@ -156,11 +170,11 @@ main() {
     init_database
     
     print_status "Installation completed successfully!"
-    print_status "Please visit http://your-domain to access the application"
+    print_status "Please visit http://localhost to access the application"
     print_warning "Don't forget to:"
-    print_warning "1. Configure SSL certificates"
+    print_warning "1. Configure SSL certificates if needed"
     print_warning "2. Update the .env file with your settings"
-    print_warning "3. Create an admin user using: sudo -u church_app $APP_DIR/venv/bin/python $APP_DIR/create_admin.py"
+    print_warning "3. Create an admin user using: runuser -u church_app -- /opt/church/venv/bin/python /opt/church/create_admin.py"
 }
 
 # Run main installation

@@ -71,8 +71,8 @@ BACKUP_DIRECTORY=/opt/church/backups
 BACKUP_RETENTION_DAYS=30
 EOL
 
-    chown church_app:church_app "$ENV_FILE"
     chmod 600 "$ENV_FILE"
+    chown church_app:church_app "$ENV_FILE"
     
     print_status "Environment file created at $ENV_FILE"
     print_warning "Please update the email configuration in $ENV_FILE"
@@ -83,18 +83,18 @@ create_directories() {
     print_status "Creating application directories..."
     
     # Create directories
-    mkdir -p "$APP_DIR/uploads"
-    mkdir -p "$APP_DIR/backups"
-    mkdir -p "$APP_DIR/instance"
+    mkdir -p "$APP_DIR/uploads" "$APP_DIR/backups" "$APP_DIR/instance" "$APP_DIR/static"
     
     # Set permissions
-    chown -R church_app:church_app "$APP_DIR/uploads"
-    chown -R church_app:church_app "$APP_DIR/backups"
-    chown -R church_app:church_app "$APP_DIR/instance"
+    chown -R church_app:church_app "$APP_DIR/uploads" \
+                                  "$APP_DIR/backups" \
+                                  "$APP_DIR/instance" \
+                                  "$APP_DIR/static"
     
-    chmod 750 "$APP_DIR/uploads"
-    chmod 750 "$APP_DIR/backups"
-    chmod 750 "$APP_DIR/instance"
+    chmod 750 "$APP_DIR/uploads" \
+              "$APP_DIR/backups" \
+              "$APP_DIR/instance" \
+              "$APP_DIR/static"
 }
 
 # Set up backup script

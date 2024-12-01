@@ -129,7 +129,7 @@ church/
 
 ### Automated Installation
 
-The easiest way to install the Church Management System is using our automated installation script:
+The easiest way to install the Church Management System is using our automated installation script. The script must be run as root:
 
 1. **Download the latest release**
    ```bash
@@ -142,9 +142,9 @@ The easiest way to install the Church Management System is using our automated i
    chmod +x install.sh
    ```
 
-3. **Run the installation script**
+3. **Run the installation script as root**
    ```bash
-   sudo ./install.sh
+   ./install.sh
    ```
 
 The installation script will:
@@ -160,7 +160,7 @@ The installation script will:
 
 1. **Update Environment Variables**
    ```bash
-   sudo nano /opt/church/.env
+   nano /opt/church/.env
    ```
    Update the following settings:
    - Email configuration (SMTP settings)
@@ -169,13 +169,13 @@ The installation script will:
 
 2. **Create Admin User**
    ```bash
-   sudo -u church_app /opt/church/venv/bin/python /opt/church/create_admin.py
+   runuser -u church_app -- /opt/church/venv/bin/python /opt/church/create_admin.py
    ```
 
 3. **Check Service Status**
    ```bash
-   sudo systemctl status church
-   sudo systemctl status nginx
+   systemctl status church
+   systemctl status nginx
    ```
 
 ### Installation Location
@@ -191,19 +191,19 @@ The installation script will:
 
 ```bash
 # Restart application
-sudo systemctl restart church
+systemctl restart church
 
 # View logs
-sudo journalctl -u church
+journalctl -u church
 
 # Manual backup
-sudo -u church_app /opt/church/backup.sh
+runuser -u church_app -- /opt/church/backup.sh
 
 # Update application
 cd /opt/church
-sudo -u church_app git pull
-sudo -u church_app /opt/church/venv/bin/pip install -r requirements.txt
-sudo systemctl restart church
+runuser -u church_app -- git pull
+runuser -u church_app -- /opt/church/venv/bin/pip install -r requirements.txt
+systemctl restart church
 ```
 
 ### Uninstallation
@@ -212,19 +212,19 @@ To remove the Church Management System:
 
 ```bash
 # Stop and disable services
-sudo systemctl stop church
-sudo systemctl disable church
+systemctl stop church
+systemctl disable church
 
 # Remove files and user
-sudo rm -rf /opt/church
-sudo userdel -r church_app
-sudo rm /etc/nginx/sites-enabled/church
-sudo rm /etc/nginx/sites-available/church
-sudo rm /etc/systemd/system/church.service
-sudo rm /etc/cron.d/church-backup
+rm -rf /opt/church
+userdel -r church_app
+rm /etc/nginx/sites-enabled/church
+rm /etc/nginx/sites-available/church
+rm /etc/systemd/system/church.service
+rm /etc/cron.d/church-backup
 
 # Restart Nginx
-sudo systemctl restart nginx
+systemctl restart nginx
 ```
 
 ## Docker Deployment
@@ -364,12 +364,12 @@ This application uses SQLite as its database, which is suitable for smaller depl
 1. **Server Setup**
    ```bash
    # Install system dependencies
-   sudo apt-get update
-   sudo apt-get install python3-pip python3-venv nginx
+   apt-get update
+   apt-get install python3-pip python3-venv nginx
 
    # Create application user
-   sudo useradd -m -s /bin/bash church_app
-   sudo su - church_app
+   useradd -m -s /bin/bash church_app
+   su - church_app
    ```
 
 2. **Application Setup**
@@ -446,9 +446,9 @@ This application uses SQLite as its database, which is suitable for smaller depl
 
 7. **Start Services**
    ```bash
-   sudo systemctl start church
-   sudo systemctl enable church
-   sudo systemctl restart nginx
+   systemctl start church
+   systemctl enable church
+   systemctl restart nginx
    ```
 
 ### Monitoring and Maintenance
@@ -470,7 +470,7 @@ This application uses SQLite as its database, which is suitable for smaller depl
 3. **Security Updates**
    ```bash
    # Update system packages
-   sudo apt update && sudo apt upgrade
+   apt update && apt upgrade
 
    # Update Python packages
    pip install --upgrade -r requirements.txt
@@ -479,7 +479,7 @@ This application uses SQLite as its database, which is suitable for smaller depl
 4. **SSL Certificate Renewal**
    ```bash
    # Auto-renewal with Let's Encrypt
-   sudo certbot renew
+   certbot renew
    ```
 
 ### Scaling Considerations
