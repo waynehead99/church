@@ -1,6 +1,5 @@
 from app import app, db
-from models import User, FormData
-from werkzeug.security import generate_password_hash
+from models import User
 
 def init_db():
     with app.app_context():
