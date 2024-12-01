@@ -21,7 +21,7 @@ Last Updated: 2024
 """
 
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, session
-from models import db, User, FormData, Session
+from models import db, User, FormData
 from routes.admin import admin_bp
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -31,8 +31,7 @@ from functools import wraps
 import io
 import sys
 import logging
-from sqlalchemy.orm import sessionmaker
-from flask_session import Session as FlaskSession
+from flask_session import Session
 
 # Set up logging
 log_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'logs')
@@ -70,7 +69,6 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 # Session configuration
 app.config['SESSION_TYPE'] = 'sqlalchemy'
 app.config['SESSION_SQLALCHEMY'] = db
-app.config['SESSION_SQLALCHEMY_TABLE'] = 'sessions'
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=7)
 app.config['SESSION_COOKIE_NAME'] = 'church_session'
 app.config['SESSION_COOKIE_SECURE'] = False  # Set to True in production with HTTPS
@@ -83,7 +81,7 @@ app.config['REMEMBER_COOKIE_NAME'] = 'church_remember'
 
 # Initialize extensions
 db.init_app(app)
-FlaskSession(app)
+Session(app)
 
 # Initialize Flask-Login
 login_manager = LoginManager()

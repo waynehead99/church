@@ -65,18 +65,3 @@ class FormData(db.Model):
     date_submitted = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     form_type = db.Column(db.String(50), default='winter_camp')
     status = db.Column(db.String(20), default='pending')  # pending, approved, rejected
-
-class Session(db.Model):
-    __tablename__ = 'sessions'
-
-    id = db.Column(db.String(255), primary_key=True)
-    session_data = db.Column(db.LargeBinary)
-    expiry = db.Column(db.DateTime, nullable=False)
-
-    def __init__(self, id, session_data, expiry):
-        self.id = id
-        self.session_data = session_data
-        self.expiry = expiry
-
-    def __repr__(self):
-        return f'<Session {self.id}>'
