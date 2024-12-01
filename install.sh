@@ -79,7 +79,15 @@ setup_venv() {
     cd "$APP_DIR"
     python3 -m venv venv
     chown -R church_app:church_app venv
-    runuser -u church_app -- bash -c "source venv/bin/activate && pip install -r requirements.txt"
+    
+    # Activate virtual environment and install dependencies
+    source venv/bin/activate
+    pip install --upgrade pip
+    pip install -r requirements.txt
+    deactivate
+    
+    # Fix permissions
+    chown -R church_app:church_app "$APP_DIR/venv"
 }
 
 # Configure Nginx
