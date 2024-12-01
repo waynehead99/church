@@ -60,31 +60,8 @@ app = Flask(__name__)
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY') or os.urandom(24)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///church.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-
-# Security configurations for reverse proxy setup
-app.config['PREFERRED_URL_SCHEME'] = 'https'
-app.config['USE_X_FORWARDED_HOST'] = True
-app.config['PROXY_FIX_X_FOR'] = 1
-app.config['PROXY_FIX_X_PROTO'] = 1
-app.config['PROXY_FIX_X_HOST'] = 1
-app.config['PROXY_FIX_X_PORT'] = 1
-app.config['PROXY_FIX_X_PREFIX'] = 1
-
-from werkzeug.middleware.proxy_fix import ProxyFix
-app.wsgi_app = ProxyFix(
-    app.wsgi_app,
-    x_for=1,
-    x_proto=1,
-    x_host=1,
-    x_port=1,
-    x_prefix=1
-)
-
-# Redis configuration for session management
-app.config['SESSION_TYPE'] = 'redis'
-app.config['SESSION_REDIS'] = redis.from_url('redis://localhost:6379')
-
-# Session security and cookie configuration
+app.config['SQLALCHEMY_POOL_TIMEOUT'] = 30  # Database connection timeout
+app.config['SQLALCHEMY_POOL_RECYCLE'] = 3600  # Recycle connections after an hour
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=24)  # Session expires after 24 hours of inactivity
 app.config['SESSION_COOKIE_SECURE'] = True  # Ensure cookies are only sent over HTTPS
 app.config['SESSION_COOKIE_HTTPONLY'] = True  # Prevent client-side access to cookies
@@ -100,11 +77,12 @@ from models import db
 db.init_app(app)
 Session(app)
 
-# Initialize rate limiting with default quotas
+# Initialize rate limiting with Redis storage
 limiter = Limiter(
     app=app,
     key_func=get_remote_address,
-    default_limits=["200 per day", "50 per hour"]  # Global rate limits
+    default_limits=["200 per day", "50 per hour"],  # Global rate limits
+    storage_uri="redis://localhost:6379"  # Use Redis for persistent rate limit storage
 )
 
 # Configure caching system
@@ -187,7 +165,15 @@ def send_registration_confirmation(form_data):
         msg.html = render_template(
             'email/registration_confirmation.html',
             student_name=form_data.student_name,
-            date_of_birth=form_data.date_of_birth,
+            date_of_birth=form_data.date_of_birth,location / {
+                proxy_pass http://127.0.0.1:8000;  # Adjust port if different
+                proxy_connect_timeout 300;
+                proxy_send_timeout 300;
+                proxy_read_timeout 300;
+                proxy_buffering off;
+                proxy_set_header Host $host;
+                proxy_set_header X-Real-IP $remote_addr;
+            }
             street=form_data.street,
             city=form_data.city,
             zip_code=form_data.zip_code,
