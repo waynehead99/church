@@ -65,7 +65,7 @@ app = Flask(__name__)
 application = app
 
 # Configuration
-app.config['SECRET_KEY'] = os.urandom(24)  # Generate a random secret key for session security
+app.config['SECRET_KEY'] = os.getenv('SECRET_KEY') or os.urandom(24)  # Use environment variable if available, fallback to random
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///church.db'  # SQLite database configuration
 
 # Email Configuration
