@@ -31,10 +31,7 @@ from flask import Flask, render_template, request, redirect, url_for, flash, jso
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from flask_mail import Mail, Message
 from flask_session import Session
-from flask_limiter import Limiter
-from flask_limiter.util import get_remote_address
 from werkzeug.security import generate_password_hash, check_password_hash
-import redis
 from flask_caching import Cache
 
 # Set up logging
@@ -73,17 +70,23 @@ app.config['REMEMBER_COOKIE_HTTPONLY'] = True  # Prevent JS access to remember-m
 app.config['REMEMBER_COOKIE_NAME'] = 'church_remember'
 
 # Initialize extensions
-from models import db
+from models import db, RateLimit
 db.init_app(app)
 Session(app)
 
-# Initialize rate limiting with Redis storage
-limiter = Limiter(
-    app=app,
-    key_func=get_remote_address,
-    default_limits=["200 per day", "50 per hour"],  # Global rate limits
-    storage_uri="redis://localhost:6379"  # Use Redis for persistent rate limit storage
-)
+# Custom rate limiter implementation
+def rate_limit(max_requests, period):
+    def decorator(f):
+        @wraps(f)
+        def wrapped(*args, **kwargs):
+            key = f"{get_remote_address()}:{f.__name__}"
+            hits = RateLimit.increment(key, reset_after=period)
+            
+            if hits > max_requests:
+                return jsonify({"error": "Too many requests"}), 429
+            return f(*args, **kwargs)
+        return wrapped
+    return decorator
 
 # Configure caching system
 cache = Cache(app, config={
@@ -269,7 +272,6 @@ def index():
     return render_template('index.html')
 
 @app.route('/login', methods=['GET', 'POST'])
-@limiter.limit("5 per minute", error_message="Too many login attempts. Please try again later.")
 def login():
     """
     Handle user login attempts.
@@ -338,7 +340,6 @@ def login():
     return render_template('login.html')
 
 @app.route('/signup', methods=['GET', 'POST'])
-@limiter.limit("3 per minute", error_message="Too many signup attempts. Please try again later.")
 def signup():
     """
     Handle new user registration.
@@ -664,42 +665,22 @@ def health_check():
     return jsonify({'status': 'healthy', 'timestamp': datetime.utcnow()})
 
 @app.route('/health/db')
-@cache.cached(timeout=60)
 def db_health():
-    """
-    Database connectivity health check.
-    
-    Verifies:
-    - Database connection is active
-    - Basic CRUD operations are working
-    
-    Returns:
-        dict: Database status and connection details
-    """
+    """Database health check."""
     try:
+        # Test database connection
         db.session.execute('SELECT 1')
-        return jsonify({'status': 'healthy', 'service': 'database'})
+        return jsonify({
+            'status': 'healthy',
+            'message': 'Database connection is active',
+            'timestamp': datetime.utcnow().isoformat()
+        })
     except Exception as e:
-        return jsonify({'status': 'unhealthy', 'service': 'database', 'error': str(e)}), 500
-
-@app.route('/health/redis')
-@cache.cached(timeout=60)
-def redis_health():
-    """
-    Redis connectivity health check.
-    
-    Verifies:
-    - Redis connection is active
-    - Session storage is functional
-    
-    Returns:
-        dict: Redis connection status and details
-    """
-    try:
-        redis_client.ping()
-        return jsonify({'status': 'healthy', 'service': 'redis'})
-    except Exception as e:
-        return jsonify({'status': 'unhealthy', 'service': 'redis', 'error': str(e)}), 500
+        return jsonify({
+            'status': 'unhealthy',
+            'message': str(e),
+            'timestamp': datetime.utcnow().isoformat()
+        }), 500
 
 @app.route('/health/email')
 @cache.cached(timeout=60)
@@ -724,7 +705,7 @@ def email_health():
 
 # Apply rate limiting to sensitive endpoints
 @app.route('/login', methods=['POST'])
-@limiter.limit("5 per minute", error_message="Too many login attempts. Please try again later.")
+@rate_limit(max_requests=5, period=timedelta(minutes=15))
 def login_post():
     """
     Rate-limited login endpoint.
@@ -737,7 +718,7 @@ def login_post():
     return login()
 
 @app.route('/signup', methods=['POST'])
-@limiter.limit("3 per minute")
+@rate_limit(max_requests=3, period=timedelta(hours=1))
 def signup_post():
     """
     Rate-limited signup endpoint.

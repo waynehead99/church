@@ -1,7 +1,7 @@
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
-from datetime import datetime
+from datetime import datetime, timedelta
 
 db = SQLAlchemy()
 
@@ -65,3 +65,34 @@ class FormData(db.Model):
     date_submitted = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     form_type = db.Column(db.String(50), default='winter_camp')
     status = db.Column(db.String(20), default='pending')  # pending, approved, rejected
+
+class RateLimit(db.Model):
+    __tablename__ = 'rate_limits'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    key = db.Column(db.String(255), nullable=False, index=True)
+    hits = db.Column(db.Integer, default=0)
+    reset_time = db.Column(db.DateTime, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    @classmethod
+    def get_rate_limit(cls, key):
+        limit = cls.query.filter_by(key=key).first()
+        now = datetime.utcnow()
+        if limit and limit.reset_time <= now:
+            limit.hits = 0
+            limit.reset_time = now + timedelta(hours=1)
+            db.session.commit()
+        return limit
+    
+    @classmethod
+    def increment(cls, key, reset_after=timedelta(hours=1)):
+        now = datetime.utcnow()
+        limit = cls.get_rate_limit(key)
+        if not limit:
+            limit = cls(key=key, hits=1, reset_time=now + reset_after)
+            db.session.add(limit)
+        else:
+            limit.hits += 1
+        db.session.commit()
+        return limit.hits
