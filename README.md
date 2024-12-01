@@ -56,8 +56,7 @@ A comprehensive web-based church management system built with Flask that enables
   - AJAX: Asynchronous requests
 
 - **Database**
-  - SQLite: Local development
-  - PostgreSQL: Production deployment
+  - SQLite: Local development and production deployment
   - SQLAlchemy Migrations: Schema management
 
 ## Project Structure
@@ -111,7 +110,6 @@ church/
    cp .env.example .env
    # Edit .env with your settings:
    # - SECRET_KEY
-   # - DATABASE_URL
    # - MAIL_SERVER
    # - MAIL_USERNAME
    # - MAIL_PASSWORD
@@ -129,10 +127,15 @@ church/
 
 ## Production Deployment
 
+### Current Setup
+This application uses SQLite as its database, which is suitable for smaller deployments with:
+- Low to moderate traffic
+- Single-server deployment
+- Limited concurrent users
+- Simple backup requirements
+
 ### Prerequisites
 - Linux server with Python 3.7+
-- PostgreSQL database
-- Redis server
 - SMTP server for emails
 - SSL certificate for HTTPS
 
@@ -142,7 +145,7 @@ church/
    ```bash
    # Install system dependencies
    sudo apt-get update
-   sudo apt-get install python3-pip python3-venv postgresql redis-server nginx
+   sudo apt-get install python3-pip python3-venv nginx
 
    # Create application user
    sudo useradd -m -s /bin/bash church_app
@@ -165,8 +168,6 @@ church/
    cp .env.example .env
    # Edit .env with production values:
    # - Set SECRET_KEY
-   # - Configure PostgreSQL database URL
-   # - Set Redis URL
    # - Configure SMTP settings
    # - Enable production mode
    ```
@@ -176,6 +177,9 @@ church/
    # Initialize database
    flask db upgrade
    python create_admin.py  # Create initial admin user
+   
+   # Set proper permissions for SQLite database
+   chmod 640 church.db
    ```
 
 5. **Gunicorn Setup**
@@ -237,7 +241,7 @@ church/
 2. **Backup Strategy**
    ```bash
    # Database backup (daily)
-   pg_dump church_db > backup_$(date +%Y%m%d).sql
+   sqlite3 church.db ".backup 'backup_$(date +%Y%m%d).db'"
 
    # Application backup
    tar -czf church_app_$(date +%Y%m%d).tar.gz /home/church_app/church
@@ -258,18 +262,20 @@ church/
    sudo certbot renew
    ```
 
-### Health Checks
+### Scaling Considerations
 
-The application provides the following health check endpoints:
-- `/health`: Basic application health
-- `/health/db`: Database connectivity
-- `/health/redis`: Redis connectivity
-- `/health/email`: Email service status
+If your application grows and needs to handle:
+- Higher traffic volumes
+- Multiple concurrent users
+- Complex queries
+- High availability requirements
 
-### Error Tracking
+Consider upgrading to:
+1. PostgreSQL for better concurrency and scalability
+2. Redis for session management and caching
+3. Load balancing across multiple servers
 
-Sentry is configured for error tracking. Monitor errors at your Sentry dashboard:
-https://sentry.io/organizations/your-org/
+Contact the development team for guidance on scaling the application.
 
 ## Usage Guide
 
