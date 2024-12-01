@@ -70,15 +70,25 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 # Session configuration
 app.config['SESSION_TYPE'] = 'redis'
 app.config['SESSION_REDIS'] = redis.from_url('redis://localhost:6379')
-app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=7)
+app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=24)  # Session timeout after 24 hours
+app.config['SESSION_COOKIE_SECURE'] = True  # Cookies only sent over HTTPS
+app.config['SESSION_COOKIE_HTTPONLY'] = True  # Prevent JavaScript access to session cookie
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'  # CSRF protection
 app.config['SESSION_COOKIE_NAME'] = 'church_session'
-app.config['SESSION_COOKIE_SECURE'] = False  # Set to True in production with HTTPS
-app.config['SESSION_COOKIE_HTTPONLY'] = True
-app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 app.config['REMEMBER_COOKIE_DURATION'] = timedelta(days=7)
-app.config['REMEMBER_COOKIE_SECURE'] = False  # Set to True in production with HTTPS
+app.config['REMEMBER_COOKIE_SECURE'] = True  # Set to True in production with HTTPS
 app.config['REMEMBER_COOKIE_HTTPONLY'] = True
 app.config['REMEMBER_COOKIE_NAME'] = 'church_remember'
+
+# Password requirements
+PASSWORD_MIN_LENGTH = 8
+PASSWORD_REQUIREMENTS = {
+    'min_length': PASSWORD_MIN_LENGTH,
+    'require_upper': True,
+    'require_lower': True,
+    'require_digit': True,
+    'require_special': True
+}
 
 # Initialize extensions
 db.init_app(app)
@@ -146,6 +156,37 @@ def send_registration_confirmation(form_data):
         logger.error(f"Failed to send registration confirmation email: {str(e)}")
         # Don't raise the exception - we don't want to break the registration process if email fails
 
+@app.after_request
+def add_security_headers(response):
+    """Add security headers to every response"""
+    response.headers['X-Frame-Options'] = 'SAMEORIGIN'
+    response.headers['X-Content-Type-Options'] = 'nosniff'
+    response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
+    response.headers['Content-Security-Policy'] = "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline';"
+    return response
+
+def validate_password(password):
+    """
+    Validate password meets security requirements
+    Returns (bool, str) tuple of (is_valid, error_message)
+    """
+    if len(password) < PASSWORD_REQUIREMENTS['min_length']:
+        return False, f'Password must be at least {PASSWORD_REQUIREMENTS["min_length"]} characters long'
+    
+    if PASSWORD_REQUIREMENTS['require_upper'] and not any(c.isupper() for c in password):
+        return False, 'Password must contain at least one uppercase letter'
+        
+    if PASSWORD_REQUIREMENTS['require_lower'] and not any(c.islower() for c in password):
+        return False, 'Password must contain at least one lowercase letter'
+        
+    if PASSWORD_REQUIREMENTS['require_digit'] and not any(c.isdigit() for c in password):
+        return False, 'Password must contain at least one number'
+        
+    if PASSWORD_REQUIREMENTS['require_special'] and not any(c in '!@#$%^&*(),.?":{}|<>' for c in password):
+        return False, 'Password must contain at least one special character'
+    
+    return True, ''
+
 # Routes
 @app.route('/')
 def index():
@@ -160,6 +201,7 @@ def index():
     return render_template('index.html')
 
 @app.route('/login', methods=['GET', 'POST'])
+@limiter.limit("5 per minute", error_message="Too many login attempts. Please try again later.")
 def login():
     logger.debug("Login route accessed")
     
@@ -181,15 +223,21 @@ def login():
         user = User.query.filter_by(email=email).first()
         
         if user and user.check_password(password):
+            # Check if user has other active sessions
+            if 'user_id' in session and session['user_id'] != user.id:
+                # Invalidate other sessions
+                session.clear()
+            
             logger.info(f"Successful login for user: {email}")
-            # Set session as permanent and remember the user
             session.permanent = True
             login_user(user, remember=True, duration=timedelta(days=7))
             
-            # Add user info to session
+            # Bind session to IP
+            session['ip'] = request.remote_addr
             session['user_id'] = user.id
             session['email'] = user.email
             session['is_admin'] = user.is_admin
+            session['login_time'] = datetime.utcnow().timestamp()
             
             logger.debug("User logged in successfully with remember=True")
             logger.debug(f"Session contains: {session}")
@@ -206,64 +254,60 @@ def login():
     return render_template('login.html')
 
 @app.route('/signup', methods=['GET', 'POST'])
+@limiter.limit("3 per minute", error_message="Too many signup attempts. Please try again later.")
 def signup():
-    """
-    Signup route for new user registration.
-    Creates new user accounts with proper password hashing and validation.
-    
-    Returns:
-        GET: Rendered signup form
-        POST: Redirects to dashboard on success, back to signup on failure
-        
-    Raises:
-        SQLAlchemyError: If database operation fails
-    """
+    if current_user.is_authenticated:
+        return redirect(url_for('dashboard'))
+
     if request.method == 'POST':
         email = request.form.get('email')
         password = request.form.get('password')
         confirm_password = request.form.get('confirm_password')
-        
-        # Check if passwords match
+
+        if not email or not password or not confirm_password:
+            flash('Please fill in all fields', 'error')
+            return redirect(url_for('signup'))
+
         if password != confirm_password:
-            flash('Passwords do not match')
+            flash('Passwords do not match', 'error')
             return redirect(url_for('signup'))
-        
-        # Check if email already exists
-        if User.query.filter_by(email=email).first():
-            flash('Email already registered')
-            return redirect(url_for('signup'))
-        
-        # Validate password
+
+        # Validate password strength
         is_valid, error_message = validate_password(password)
         if not is_valid:
-            flash(error_message)
+            flash(error_message, 'error')
             return redirect(url_for('signup'))
-        
-        user = User(email=email)
-        user.set_password(password)
-        db.session.add(user)
-        db.session.commit()
-        
-        # Send welcome email
+
+        # Check if user already exists
+        existing_user = User.query.filter_by(email=email).first()
+        if existing_user:
+            flash('Email already registered', 'error')
+            return redirect(url_for('signup'))
+
         try:
-            logger.info(f"Attempting to send welcome email to {email}")
-            msg = Message(
-                'Welcome to Reclaim Student Ministry',
-                recipients=[email]
-            )
-            msg.html = render_template(
-                'email/welcome.html',
-                user=user
-            )
-            mail.send(msg)
-            logger.info(f"Successfully sent welcome email to {email}")
+            new_user = User(email=email)
+            new_user.set_password(password)
+            db.session.add(new_user)
+            db.session.commit()
+            
+            # Log in the new user
+            login_user(new_user)
+            session.permanent = True
+            session['ip'] = request.remote_addr
+            session['user_id'] = new_user.id
+            session['email'] = new_user.email
+            session['is_admin'] = new_user.is_admin
+            session['login_time'] = datetime.utcnow().timestamp()
+            
+            flash('Registration successful!', 'success')
+            return redirect(url_for('dashboard'))
+            
         except Exception as e:
-            logger.error(f"Error sending welcome email to {email}: {str(e)}")
-            logger.exception("Full traceback:")
-            flash("Your account was created, but we couldn't send the welcome email. Please contact support if you don't receive it.")
-        
-        login_user(user)
-        return redirect(url_for('dashboard'))
+            db.session.rollback()
+            logger.error(f"Error during user registration: {str(e)}")
+            flash('An error occurred during registration. Please try again.', 'error')
+            return redirect(url_for('signup'))
+
     return render_template('signup.html')
 
 @app.route('/dashboard')
@@ -431,6 +475,26 @@ def reset_password(token):
         
     return render_template('reset_password.html')
 
+@app.before_request
+def check_session_security():
+    """Verify session security before each request"""
+    if current_user.is_authenticated:
+        # Check if IP matches the one stored in session
+        if 'ip' in session and session['ip'] != request.remote_addr:
+            logout_user()
+            session.clear()
+            flash('Your session has expired for security reasons. Please login again.', 'warning')
+            return redirect(url_for('login'))
+            
+        # Check session timeout
+        if 'login_time' in session:
+            login_time = datetime.fromtimestamp(session['login_time'])
+            if datetime.utcnow() - login_time > timedelta(hours=24):
+                logout_user()
+                session.clear()
+                flash('Your session has expired. Please login again.', 'info')
+                return redirect(url_for('login'))
+
 # Health check endpoints
 @app.route('/health')
 @cache.cached(timeout=60)
@@ -471,7 +535,7 @@ def email_health():
 
 # Apply rate limiting to sensitive endpoints
 @app.route('/login', methods=['POST'])
-@limiter.limit("5 per minute")
+@limiter.limit("5 per minute", error_message="Too many login attempts. Please try again later.")
 def login_post():
     """Rate-limited login endpoint."""
     return login()
