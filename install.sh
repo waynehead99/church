@@ -146,6 +146,65 @@ setup_venv() {
     print_status "Virtual environment setup completed"
 }
 
+# Initialize the database
+init_database() {
+    print_status "Initializing database..."
+    cd "$APP_DIR"
+    
+    # Clean up existing migrations if they exist
+    if [ -d "migrations" ]; then
+        print_status "Removing existing migrations..."
+        rm -rf migrations
+    fi
+    
+    # Remove existing database if it exists
+    if [ -f "instance/church.db" ]; then
+        print_status "Removing existing database..."
+        rm -f instance/church.db
+    fi
+    
+    # Create instance directory if it doesn't exist
+    mkdir -p instance
+    chown -R church_app:church_app instance
+    
+    print_status "Running database migrations..."
+    export FLASK_APP=app.py
+    runuser -u church_app -- "$APP_DIR/venv/bin/flask" db init
+    runuser -u church_app -- "$APP_DIR/venv/bin/flask" db migrate -m "Initial migration"
+    runuser -u church_app -- "$APP_DIR/venv/bin/flask" db upgrade
+    
+    if [ $? -ne 0 ]; then
+        print_error "Failed to initialize database!"
+        exit 1
+    fi
+    
+    # Set proper permissions
+    chown -R church_app:church_app migrations
+    chown -R church_app:church_app instance
+    
+    print_status "Database initialization completed"
+}
+
+# Set up backup script
+setup_backup() {
+    print_status "Setting up backup script..."
+    
+    # Copy backup script to app directory
+    cp "$APP_DIR/backup.sh" "$APP_DIR/backup.sh"
+    chmod +x "$APP_DIR/backup.sh"
+    chown church_app:church_app "$APP_DIR/backup.sh"
+    
+    # Create backup directory if it doesn't exist
+    mkdir -p "$APP_DIR/backups"
+    chown church_app:church_app "$APP_DIR/backups"
+    
+    # Set up daily cron job for backups at 2 AM
+    CRON_JOB="0 2 * * * /opt/church/backup.sh >> /opt/church/logs/backup.log 2>&1"
+    (crontab -u church_app -l 2>/dev/null || echo "") | grep -v "/opt/church/backup.sh" | { cat; echo "$CRON_JOB"; } | crontab -u church_app -
+    
+    print_status "Backup script and cron job configured"
+}
+
 # Configure Nginx
 setup_nginx() {
     print_status "Configuring Nginx..."
@@ -210,18 +269,6 @@ EOL
     print_status "Systemd service configured and started"
 }
 
-# Initialize database
-init_database() {
-    print_status "Initializing database..."
-    runuser -u church_app -- bash -c "cd $APP_DIR && source venv/bin/activate && flask db upgrade"
-    
-    # Run configuration script
-    if [ -f "$APP_DIR/configure.sh" ]; then
-        chmod +x "$APP_DIR/configure.sh"
-        "$APP_DIR/configure.sh"
-    fi
-}
-
 # Main installation process
 main() {
     print_status "Starting installation of Church Management System..."
@@ -230,16 +277,13 @@ main() {
     setup_user
     create_directories
     setup_venv
+    init_database
+    setup_backup
     setup_nginx
     setup_service
-    init_database
     
     print_status "Installation completed successfully!"
-    print_status "Please visit http://localhost to access the application"
-    print_warning "Don't forget to:"
-    print_warning "1. Configure SSL certificates if needed"
-    print_warning "2. Update the .env file with your settings"
-    print_warning "3. Create an admin user using: runuser -u church_app -- /opt/church/venv/bin/python /opt/church/create_admin.py"
+    print_status "You can now create an admin user and start using the application."
 }
 
 # Run main installation
