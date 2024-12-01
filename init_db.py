@@ -1,4 +1,5 @@
-from app import app, db, User
+from app import app, db
+from models import User, FormData, Session
 from werkzeug.security import generate_password_hash
 
 def init_db():
@@ -10,14 +11,14 @@ def init_db():
         db.create_all()
         
         # Check if admin user exists
-        admin_email = "admin@example.com"
+        admin_email = "admin@church.org"
         if not User.query.filter_by(email=admin_email).first():
             # Create admin user
             admin = User(
                 email=admin_email,
                 is_admin=True
             )
-            admin.set_password("Admin123!")  # Remember to change this in production
+            admin.set_password("admin123")  # Remember to change this in production
             db.session.add(admin)
             db.session.commit()
             print("Created admin user")

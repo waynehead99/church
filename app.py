@@ -21,7 +21,7 @@ Last Updated: 2024
 """
 
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, session
-from models import db, User, FormData
+from models import db, User, FormData, Session
 from routes.admin import admin_bp
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -29,14 +29,10 @@ from datetime import datetime, timedelta
 import os
 from functools import wraps
 import io
-import csv
-from flask import Response
-from flask_mail import Mail, Message
-import logging
 import sys
-from flask_migrate import Migrate
-from utils.password_validation import validate_password, calculate_password_strength
-from flask_session import Session
+import logging
+from sqlalchemy.orm import sessionmaker
+from flask_session import Session as FlaskSession
 
 # Set up logging
 log_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'logs')
@@ -67,96 +63,45 @@ app = Flask(__name__)
 application = app
 
 # Configuration
-app.config['SECRET_KEY'] = os.getenv('SECRET_KEY') or os.urandom(24)  # Use environment variable if available, fallback to random
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///church.db'  # SQLite database configuration
+app.config['SECRET_KEY'] = os.getenv('SECRET_KEY') or os.urandom(24)
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///church.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # Session configuration
-app.config['SESSION_TYPE'] = 'filesystem'
+app.config['SESSION_TYPE'] = 'sqlalchemy'
+app.config['SESSION_SQLALCHEMY'] = db
+app.config['SESSION_SQLALCHEMY_TABLE'] = 'sessions'
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=7)
-app.config['SESSION_COOKIE_SECURE'] = True
+app.config['SESSION_COOKIE_NAME'] = 'church_session'
+app.config['SESSION_COOKIE_SECURE'] = False  # Set to True in production with HTTPS
 app.config['SESSION_COOKIE_HTTPONLY'] = True
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 app.config['REMEMBER_COOKIE_DURATION'] = timedelta(days=7)
-app.config['REMEMBER_COOKIE_SECURE'] = True
+app.config['REMEMBER_COOKIE_SECURE'] = False  # Set to True in production with HTTPS
 app.config['REMEMBER_COOKIE_HTTPONLY'] = True
-
-# Initialize Flask-Session
-Session(app)
-
-# Email Configuration
-app.config['MAIL_SERVER'] = os.getenv('MAIL_SERVER', 'smtp.gmail.com')
-app.config['MAIL_PORT'] = int(os.getenv('MAIL_PORT', 587))
-app.config['MAIL_USE_TLS'] = os.getenv('MAIL_USE_TLS', 'True').lower() == 'true'
-app.config['MAIL_USERNAME'] = os.getenv('MAIL_USERNAME')
-app.config['MAIL_PASSWORD'] = os.getenv('MAIL_PASSWORD')
-app.config['MAIL_DEFAULT_SENDER'] = os.getenv('MAIL_DEFAULT_SENDER')
-
-# Production configuration
-import sentry_sdk
-from sentry_sdk.integrations.flask import FlaskIntegration
-from flask_caching import Cache
-from flask_limiter import Limiter
-from flask_limiter.util import get_remote_address
-import redis
-
-# Initialize Sentry for error tracking
-if os.getenv('FLASK_ENV') == 'production':
-    sentry_sdk.init(
-        dsn=os.getenv('SENTRY_DSN'),
-        integrations=[FlaskIntegration()],
-        traces_sample_rate=1.0
-    )
-
-# Redis configuration
-redis_client = redis.from_url(os.getenv('REDIS_URL', 'redis://localhost:6379'))
-
-# Initialize caching
-cache = Cache(app, config={
-    'CACHE_TYPE': 'redis',
-    'CACHE_REDIS_URL': os.getenv('REDIS_URL', 'redis://localhost:6379')
-})
-
-# Initialize rate limiting
-limiter = Limiter(
-    app=app,
-    key_func=get_remote_address,
-    storage_uri=os.getenv('REDIS_URL', 'redis://localhost:6379')
-)
+app.config['REMEMBER_COOKIE_NAME'] = 'church_remember'
 
 # Initialize extensions
 db.init_app(app)
-mail = Mail(app)
-migrate = Migrate(app, db)
+FlaskSession(app)
 
 # Initialize Flask-Login
 login_manager = LoginManager()
 login_manager.init_app(app)
-login_manager.login_view = 'login'  # Specify the login view for unauthorized access
+login_manager.login_view = 'login'
 login_manager.login_message = 'Please log in to access this page.'
 login_manager.login_message_category = 'info'
 login_manager.session_protection = 'strong'
 
 @login_manager.user_loader
 def load_user(user_id):
-    """
-    Flask-Login user loader callback.
-    Loads user object from database based on user_id stored in session.
-    
-    Args:
-        user_id: The ID of the user to load
-        
-    Returns:
-        User object or None if not found
-    """
-    logger.debug(f"Loading user with ID: {user_id}")
     try:
         user = User.query.get(int(user_id))
         if user:
             logger.debug(f"Successfully loaded user: {user.email}")
-        else:
-            logger.warning(f"No user found with ID: {user_id}")
-        return user
+            return user
+        logger.warning(f"No user found with ID: {user_id}")
+        return None
     except Exception as e:
         logger.error(f"Error loading user {user_id}: {str(e)}")
         return None
@@ -217,17 +162,8 @@ def index():
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
-    """
-    Login route handling both GET (display form) and POST (process form) requests.
-    Authenticates users and creates a session using Flask-Login.
-    
-    Returns:
-        GET: Rendered login form
-        POST: Redirects to dashboard on success, back to login on failure
-    """
     logger.debug("Login route accessed")
     
-    # Redirect if user is already logged in
     if current_user.is_authenticated:
         logger.debug("User already authenticated, redirecting to dashboard")
         return redirect(url_for('dashboard'))
@@ -249,18 +185,22 @@ def login():
             logger.info(f"Successful login for user: {email}")
             # Set session as permanent and remember the user
             session.permanent = True
-            login_user(user, remember=True)
-            logger.debug("User logged in successfully with remember=True")
+            login_user(user, remember=True, duration=timedelta(days=7))
             
-            # Get the next page from the URL parameters, defaulting to dashboard
+            # Add user info to session
+            session['user_id'] = user.id
+            session['email'] = user.email
+            session['is_admin'] = user.is_admin
+            
+            logger.debug("User logged in successfully with remember=True")
+            logger.debug(f"Session contains: {session}")
+            
             next_page = request.args.get('next')
-            # Ensure the next page is safe (relative URL)
             if not next_page or not next_page.startswith('/'):
                 next_page = url_for('dashboard')
             logger.debug(f"Redirecting to: {next_page}")
             return redirect(next_page)
         
-        # Don't reveal whether user exists or password was wrong
         logger.warning(f"Failed login attempt for email: {email}")
         flash('Invalid email or password', 'error')
         
@@ -398,20 +338,13 @@ def submit_form():
     
     return render_template('submit_form.html')
 
-# Register blueprints
-app.register_blueprint(admin_bp)
-
 @app.route('/logout')
 @login_required
 def logout():
-    """
-    Logout route to end user session.
-    Clears the user session and redirects to homepage.
-    
-    Returns:
-        Redirect to homepage with logout confirmation
-    """
+    logger.debug(f"Logging out user: {current_user.email if current_user.is_authenticated else 'Unknown'}")
     logout_user()
+    session.clear()
+    flash('You have been logged out.', 'info')
     return redirect(url_for('index'))
 
 @app.route('/api/password-strength', methods=['POST'])
@@ -549,6 +482,9 @@ def login_post():
 def signup_post():
     """Rate-limited signup endpoint."""
     return signup()
+
+# Register blueprints
+app.register_blueprint(admin_bp)
 
 if __name__ == '__main__':
     with app.app_context():
