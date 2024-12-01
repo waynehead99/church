@@ -38,11 +38,14 @@ from flask_migrate import Migrate
 from utils.password_validation import validate_password, calculate_password_strength
 
 # Set up logging
+log_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'logs')
+log_file = os.path.join(log_dir, 'app.log')
+
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[
-        logging.FileHandler('app.log'),
+        logging.FileHandler(log_file),
         logging.StreamHandler(sys.stdout)
     ]
 )

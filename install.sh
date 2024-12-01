@@ -73,21 +73,77 @@ setup_user() {
     fi
 }
 
+# Create necessary directories
+create_directories() {
+    print_status "Creating necessary directories..."
+    
+    # Create app directories
+    mkdir -p "$APP_DIR/uploads"
+    mkdir -p "$APP_DIR/backups"
+    mkdir -p "$APP_DIR/static"
+    mkdir -p "$APP_DIR/logs"
+    
+    # Set permissions
+    chown -R church_app:church_app "$APP_DIR/uploads"
+    chown -R church_app:church_app "$APP_DIR/backups"
+    chown -R church_app:church_app "$APP_DIR/static"
+    chown -R church_app:church_app "$APP_DIR/logs"
+    
+    chmod 755 "$APP_DIR/uploads"
+    chmod 755 "$APP_DIR/backups"
+    chmod 755 "$APP_DIR/static"
+    chmod 755 "$APP_DIR/logs"
+}
+
 # Set up Python virtual environment
 setup_venv() {
     print_status "Setting up Python virtual environment..."
     cd "$APP_DIR"
+    
+    print_status "Creating virtual environment in $APP_DIR/venv"
     python3 -m venv venv
+    
+    print_status "Setting ownership of venv directory"
     chown -R church_app:church_app venv
     
-    # Activate virtual environment and install dependencies
+    print_status "Creating pip cache directory"
+    mkdir -p /home/church_app/.cache/pip
+    chown -R church_app:church_app /home/church_app/.cache
+    
+    print_status "Activating virtual environment"
+    if [ ! -f "venv/bin/activate" ]; then
+        print_error "Virtual environment activation script not found!"
+        exit 1
+    fi
+    
+    # Set HOME to church_app's home directory for pip cache
+    export HOME="/home/church_app"
     source venv/bin/activate
-    pip install --upgrade pip
-    pip install -r requirements.txt
+    
+    print_status "Python interpreter path: $(which python)"
+    print_status "Pip path: $(which pip)"
+    
+    print_status "Upgrading pip..."
+    python -m pip install --upgrade pip
+    
+    print_status "Installing dependencies..."
+    python -m pip install -r requirements.txt
+    
+    if [ $? -ne 0 ]; then
+        print_error "Failed to install dependencies!"
+        exit 1
+    fi
+    
+    print_status "Deactivating virtual environment"
     deactivate
     
-    # Fix permissions
+    # Reset HOME
+    unset HOME
+    
+    print_status "Setting final permissions"
     chown -R church_app:church_app "$APP_DIR/venv"
+    
+    print_status "Virtual environment setup completed"
 }
 
 # Configure Nginx
@@ -172,6 +228,7 @@ main() {
     
     install_dependencies
     setup_user
+    create_directories
     setup_venv
     setup_nginx
     setup_service
