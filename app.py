@@ -51,7 +51,11 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # Initialize Flask app with security and configuration settings
-app = Flask(__name__)
+app = Flask(__name__, 
+    static_url_path='',
+    static_folder='static',
+    template_folder='templates'
+)
 
 # Core application configuration
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY') or os.urandom(24)
@@ -60,14 +64,23 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SQLALCHEMY_POOL_TIMEOUT'] = 30  # Database connection timeout
 app.config['SQLALCHEMY_POOL_RECYCLE'] = 3600  # Recycle connections after an hour
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=24)  # Session expires after 24 hours of inactivity
-app.config['SESSION_COOKIE_SECURE'] = True  # Ensure cookies are only sent over HTTPS
+app.config['SESSION_COOKIE_SECURE'] = False  # Allow cookies over HTTP for local development
 app.config['SESSION_COOKIE_HTTPONLY'] = True  # Prevent client-side access to cookies
-app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'  # Protect against CSRF attacks
+app.config['SESSION_COOKIE_SAMESITE'] = None  # Disable SameSite for local development
 app.config['SESSION_COOKIE_NAME'] = 'church_session'
 app.config['REMEMBER_COOKIE_DURATION'] = timedelta(days=7)  # "Remember me" cookie duration
-app.config['REMEMBER_COOKIE_SECURE'] = True  # Secure remember-me cookie
+app.config['REMEMBER_COOKIE_SECURE'] = False  # Allow cookies over HTTP for local development
 app.config['REMEMBER_COOKIE_HTTPONLY'] = True  # Prevent JS access to remember-me cookie
 app.config['REMEMBER_COOKIE_NAME'] = 'church_remember'
+
+# Development settings
+if app.debug:
+    app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 0  # Disable caching for development
+
+# Session configuration
+app.config['SESSION_TYPE'] = 'filesystem'
+app.config['SESSION_FILE_DIR'] = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'flask_session')
+os.makedirs(app.config['SESSION_FILE_DIR'], exist_ok=True)
 
 # Initialize extensions
 from models import db, RateLimit
@@ -648,6 +661,17 @@ def check_session_security():
                 flash('Your session has expired. Please login again.', 'info')
                 return redirect(url_for('login'))
 
+# Debug route for static files
+@app.route('/debug-static')
+def debug_static():
+    static_url = url_for('static', filename='css/style.css')
+    static_folder = app.static_folder
+    return jsonify({
+        'static_url': static_url,
+        'static_folder': static_folder,
+        'exists': os.path.exists(os.path.join(static_folder, 'css/style.css'))
+    })
+
 # Health check endpoints
 @app.route('/health')
 @cache.cached(timeout=60)
@@ -735,4 +759,4 @@ from routes.admin import admin_bp
 app.register_blueprint(admin_bp)
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=8000, debug=False)
+    app.run(host='0.0.0.0', port=5000, debug=False)
