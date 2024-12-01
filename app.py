@@ -53,15 +53,15 @@ logging.basicConfig(
 
 logger = logging.getLogger(__name__)
 
-# Initialize Flask app
+# Initialize Flask app with security and configuration settings
 app = Flask(__name__)
 
-# Configuration
+# Core application configuration
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY') or os.urandom(24)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///church.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-# Proxy configuration
+# Security configurations for reverse proxy setup
 app.config['PREFERRED_URL_SCHEME'] = 'https'
 app.config['USE_X_FORWARDED_HOST'] = True
 app.config['PROXY_FIX_X_FOR'] = 1
@@ -80,19 +80,19 @@ app.wsgi_app = ProxyFix(
     x_prefix=1
 )
 
-# Redis configuration
+# Redis configuration for session management
 app.config['SESSION_TYPE'] = 'redis'
 app.config['SESSION_REDIS'] = redis.from_url('redis://localhost:6379')
 
-# Session configuration
-app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=24)  # Session timeout after 24 hours
-app.config['SESSION_COOKIE_SECURE'] = True  # Cookies only sent over HTTPS
-app.config['SESSION_COOKIE_HTTPONLY'] = True  # Prevent JavaScript access to session cookie
-app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'  # CSRF protection
+# Session security and cookie configuration
+app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=24)  # Session expires after 24 hours of inactivity
+app.config['SESSION_COOKIE_SECURE'] = True  # Ensure cookies are only sent over HTTPS
+app.config['SESSION_COOKIE_HTTPONLY'] = True  # Prevent client-side access to cookies
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'  # Protect against CSRF attacks
 app.config['SESSION_COOKIE_NAME'] = 'church_session'
-app.config['REMEMBER_COOKIE_DURATION'] = timedelta(days=7)
-app.config['REMEMBER_COOKIE_SECURE'] = True
-app.config['REMEMBER_COOKIE_HTTPONLY'] = True
+app.config['REMEMBER_COOKIE_DURATION'] = timedelta(days=7)  # "Remember me" cookie duration
+app.config['REMEMBER_COOKIE_SECURE'] = True  # Secure remember-me cookie
+app.config['REMEMBER_COOKIE_HTTPONLY'] = True  # Prevent JS access to remember-me cookie
 app.config['REMEMBER_COOKIE_NAME'] = 'church_remember'
 
 # Initialize extensions
@@ -100,16 +100,16 @@ from models import db
 db.init_app(app)
 Session(app)
 
-# Initialize Flask-Limiter
+# Initialize rate limiting with default quotas
 limiter = Limiter(
     app=app,
     key_func=get_remote_address,
-    default_limits=["200 per day", "50 per hour"]
+    default_limits=["200 per day", "50 per hour"]  # Global rate limits
 )
 
-# Initialize caching
+# Configure caching system
 cache = Cache(app, config={
-    'CACHE_TYPE': 'simple'  # Use simple cache for development
+    'CACHE_TYPE': 'simple'  # Simple cache for development, consider 'redis' for production
 })
 
 # Initialize Flask-Login
@@ -128,18 +128,27 @@ for path in [current_dir, opt_dir]:
         sys.path.append(path)
         logger.debug(f"Added {path} to Python path")
 
-# Password requirements
+# Configure secure password requirements
 PASSWORD_MIN_LENGTH = 8
 PASSWORD_REQUIREMENTS = {
     'min_length': PASSWORD_MIN_LENGTH,
-    'require_upper': True,
-    'require_lower': True,
-    'require_digit': True,
-    'require_special': True
+    'require_upper': True,  # Must contain uppercase letters
+    'require_lower': True,  # Must contain lowercase letters
+    'require_digit': True,  # Must contain numbers
+    'require_special': True  # Must contain special characters
 }
 
 @login_manager.user_loader
 def load_user(user_id):
+    """
+    Load a user instance from the database based on the provided user ID.
+    
+    Args:
+        user_id (int): The ID of the user to load
+    
+    Returns:
+        User instance if found, otherwise None
+    """
     try:
         user = User.query.get(int(user_id))
         if user:
@@ -153,10 +162,20 @@ def load_user(user_id):
 
 def send_registration_confirmation(form_data):
     """
-    Send a confirmation email for a new registration.
+    Send a confirmation email to users after successful registration submission.
     
     Args:
-        form_data: FormData object containing the registration details
+        form_data (FormData): Object containing all registration form fields including:
+            - student_name: Name of the registered student
+            - date_of_birth: Student's birth date
+            - contact information: Address, phone numbers
+            - emergency contacts
+            - medical information
+            - event details and payment status
+    
+    Note:
+        Email sending failures are logged but don't interrupt the registration process
+        to ensure users can still register even if email service is temporarily down.
     """
     try:
         msg = Message(
@@ -194,7 +213,20 @@ def send_registration_confirmation(form_data):
 
 @app.after_request
 def add_security_headers(response):
-    """Add security headers to every response"""
+    """
+    Add security-related HTTP headers to all responses.
+    
+    Headers added:
+    - X-Frame-Options: Prevent clickjacking attacks
+    - X-Content-Type-Options: Prevent MIME-type sniffing
+    - HSTS: Force HTTPS connections
+    
+    Args:
+        response: Flask response object
+    
+    Returns:
+        Modified response with security headers
+    """
     response.headers['X-Frame-Options'] = 'SAMEORIGIN'
     response.headers['X-Content-Type-Options'] = 'nosniff'
     response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
@@ -203,8 +235,19 @@ def add_security_headers(response):
 
 def validate_password(password):
     """
-    Validate password meets security requirements
-    Returns (bool, str) tuple of (is_valid, error_message)
+    Validate that a password meets all security requirements.
+    
+    Requirements:
+    - Minimum length (defined in PASSWORD_MIN_LENGTH)
+    - Contains uppercase and lowercase letters
+    - Contains at least one number
+    - Contains at least one special character
+    
+    Args:
+        password (str): The password to validate
+    
+    Returns:
+        tuple: (is_valid: bool, error_message: str)
     """
     if len(password) < PASSWORD_REQUIREMENTS['min_length']:
         return False, f'Password must be at least {PASSWORD_REQUIREMENTS["min_length"]} characters long'
@@ -227,11 +270,15 @@ def validate_password(password):
 @app.route('/')
 def index():
     """
-    Homepage route that displays the landing page.
-    Accessible to all users, both authenticated and anonymous.
+    Serve the application's landing page.
+    
+    This route is publicly accessible and provides:
+    - Welcome message
+    - Login/Signup options
+    - Basic information about the church management system
     
     Returns:
-        Rendered index.html template
+        str: Rendered HTML for the landing page
     """
     logger.debug(f"Index route accessed. User authenticated: {current_user.is_authenticated}")
     return render_template('index.html')
@@ -239,6 +286,22 @@ def index():
 @app.route('/login', methods=['GET', 'POST'])
 @limiter.limit("5 per minute", error_message="Too many login attempts. Please try again later.")
 def login():
+    """
+    Handle user login attempts.
+    
+    GET:
+        Displays the login form
+    
+    POST:
+        Processes the login credentials:
+        1. Validates username and password
+        2. Checks for active account
+        3. Logs in the user
+    
+    Returns:
+        GET: Rendered login template
+        POST: Redirects to dashboard on success with status message
+    """
     logger.debug("Login route accessed")
     
     if current_user.is_authenticated:
@@ -292,6 +355,22 @@ def login():
 @app.route('/signup', methods=['GET', 'POST'])
 @limiter.limit("3 per minute", error_message="Too many signup attempts. Please try again later.")
 def signup():
+    """
+    Handle new user registration.
+    
+    GET:
+        Displays the registration form
+    
+    POST:
+        Processes the registration data:
+        1. Validates all required fields
+        2. Checks for existing email
+        3. Creates a new user account
+    
+    Returns:
+        GET: Rendered registration template
+        POST: Redirects to dashboard on success with status message
+    """
     if current_user.is_authenticated:
         return redirect(url_for('dashboard'))
 
@@ -350,11 +429,19 @@ def signup():
 @login_required
 def dashboard():
     """
-    Protected dashboard route showing user's form submissions.
-    Requires authentication through @login_required decorator.
+    Display the user's personalized dashboard.
+    
+    Features:
+    - Overview of user's submitted forms
+    - Quick actions for common tasks
+    - Notifications and alerts
+    - Access to form submission history
     
     Returns:
-        Rendered dashboard template with user's form submissions
+        str: Rendered dashboard template with user's data
+    
+    Note:
+        Requires authentication via @login_required decorator
     """
     forms = FormData.query.filter_by(user_id=current_user.id).order_by(FormData.date_submitted.desc()).all()
     return render_template('dashboard.html', forms=forms)
@@ -363,15 +450,25 @@ def dashboard():
 @login_required
 def submit_form():
     """
-    Protected route for submitting new forms.
-    Handles form submission, validation, and storage in the database.
+    Handle the submission and processing of registration forms.
+    
+    GET:
+        Displays the form submission template
+    
+    POST:
+        Processes the submitted form data:
+        1. Validates all required fields
+        2. Sanitizes input data
+        3. Stores in database
+        4. Sends confirmation email
+        5. Updates user's dashboard
     
     Returns:
-        GET: Rendered form submission template
-        POST: Redirects to dashboard on success with confirmation message
-        
+        GET: Rendered form template
+        POST: Redirect to dashboard with status message
+    
     Raises:
-        SQLAlchemyError: If database operation fails
+        SQLAlchemyError: On database operation failure
     """
     if request.method == 'POST':
         try:
@@ -420,6 +517,14 @@ def submit_form():
 @app.route('/logout')
 @login_required
 def logout():
+    """
+    Handle user logout.
+    
+    Clears the session and redirects to the login page.
+    
+    Returns:
+        Redirect to login page
+    """
     logger.debug(f"Logging out user: {current_user.email if current_user.is_authenticated else 'Unknown'}")
     logout_user()
     session.clear()
@@ -428,6 +533,15 @@ def logout():
 
 @app.route('/api/password-strength', methods=['POST'])
 def check_password_strength():
+    """
+    Check the strength of a given password.
+    
+    Args:
+        password (str): The password to check
+    
+    Returns:
+        dict: Password strength information
+    """
     password = request.json.get('password', '')
     strength = calculate_password_strength(password)
     return jsonify({'strength': strength})
@@ -436,7 +550,12 @@ def check_password_strength():
 def reset_password_request():
     """
     Handle password reset requests.
+    
     Sends a password reset link to the user's email if the account exists.
+    
+    Returns:
+        GET: Rendered password reset request template
+        POST: Redirect to login page with status message
     """
     if current_user.is_authenticated:
         return redirect(url_for('index'))
@@ -477,7 +596,12 @@ def reset_password_request():
 def reset_password(token):
     """
     Handle password reset confirmation.
+    
     Validates the reset token and allows user to set a new password.
+    
+    Returns:
+        GET: Rendered password reset template
+        POST: Redirect to login page with status message
     """
     if current_user.is_authenticated:
         return redirect(url_for('index'))
@@ -513,7 +637,14 @@ def reset_password(token):
 
 @app.before_request
 def check_session_security():
-    """Verify session security before each request"""
+    """
+    Verify session security before each request.
+    
+    Checks for IP mismatch and session timeout.
+    
+    Returns:
+        Redirect to login page if session is invalid
+    """
     if current_user.is_authenticated:
         # Check if IP matches the one stored in session
         if 'ip' in session and session['ip'] != request.remote_addr:
@@ -535,13 +666,31 @@ def check_session_security():
 @app.route('/health')
 @cache.cached(timeout=60)
 def health_check():
-    """Basic application health check endpoint."""
+    """
+    Basic application health check endpoint.
+    
+    Verifies:
+    - Application is running and responding
+    - Basic routing is functional
+    
+    Returns:
+        dict: Status information and timestamp
+    """
     return jsonify({'status': 'healthy', 'timestamp': datetime.utcnow()})
 
 @app.route('/health/db')
 @cache.cached(timeout=60)
 def db_health():
-    """Database connectivity health check."""
+    """
+    Database connectivity health check.
+    
+    Verifies:
+    - Database connection is active
+    - Basic CRUD operations are working
+    
+    Returns:
+        dict: Database status and connection details
+    """
     try:
         db.session.execute('SELECT 1')
         return jsonify({'status': 'healthy', 'service': 'database'})
@@ -551,7 +700,16 @@ def db_health():
 @app.route('/health/redis')
 @cache.cached(timeout=60)
 def redis_health():
-    """Redis connectivity health check."""
+    """
+    Redis connectivity health check.
+    
+    Verifies:
+    - Redis connection is active
+    - Session storage is functional
+    
+    Returns:
+        dict: Redis connection status and details
+    """
     try:
         redis_client.ping()
         return jsonify({'status': 'healthy', 'service': 'redis'})
@@ -561,7 +719,17 @@ def redis_health():
 @app.route('/health/email')
 @cache.cached(timeout=60)
 def email_health():
-    """Email service health check."""
+    """
+    Email service health check.
+    
+    Verifies:
+    - Email server connection
+    - SMTP settings are correct
+    - Mail sending capability
+    
+    Returns:
+        dict: Email service status and configuration details
+    """
     try:
         with app.app_context():
             mail.connect()
@@ -573,13 +741,27 @@ def email_health():
 @app.route('/login', methods=['POST'])
 @limiter.limit("5 per minute", error_message="Too many login attempts. Please try again later.")
 def login_post():
-    """Rate-limited login endpoint."""
+    """
+    Rate-limited login endpoint.
+    
+    Prevents brute force attacks by limiting login attempts.
+    
+    Returns:
+        Redirect to login page with status message
+    """
     return login()
 
 @app.route('/signup', methods=['POST'])
 @limiter.limit("3 per minute")
 def signup_post():
-    """Rate-limited signup endpoint."""
+    """
+    Rate-limited signup endpoint.
+    
+    Prevents automated account creation by limiting signup attempts.
+    
+    Returns:
+        Redirect to login page with status message
+    """
     return signup()
 
 # Register blueprints
