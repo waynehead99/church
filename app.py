@@ -51,8 +51,18 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# Add both potential paths to Python path
+current_dir = os.path.dirname(os.path.abspath(__file__))
+opt_dir = '/opt/church'
+for path in [current_dir, opt_dir]:
+    if path not in sys.path:
+        sys.path.append(path)
+
 # Initialize Flask application
 app = Flask(__name__)
+
+# Make the application instance easily importable for Gunicorn
+application = app
 
 # Configuration
 app.config['SECRET_KEY'] = os.urandom(24)  # Generate a random secret key for session security

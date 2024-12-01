@@ -95,6 +95,56 @@ create_directories() {
     chmod 755 "$APP_DIR/logs"
 }
 
+# Set up environment variables
+setup_env() {
+    print_status "Setting up environment variables..."
+    
+    # Generate a random secret key
+    SECRET_KEY=$(python3 -c 'import secrets; print(secrets.token_hex(32))')
+    
+    # Create .env file
+    cat > "$APP_DIR/.env" << EOL
+# Flask Configuration
+FLASK_APP=app.py
+FLASK_ENV=production
+SECRET_KEY=${SECRET_KEY}
+DATABASE_URL=sqlite:///instance/church.db
+
+# Email Configuration
+MAIL_SERVER=smtp.gmail.com
+MAIL_PORT=587
+MAIL_USE_TLS=True
+MAIL_USERNAME=your-email@gmail.com
+MAIL_PASSWORD=your-app-specific-password
+MAIL_DEFAULT_SENDER=your-email@gmail.com
+
+# Redis Configuration
+REDIS_URL=redis://localhost:6379/0
+
+# Backup Configuration
+BACKUP_RETENTION_DAYS=7
+BACKUP_TIME=02:00
+
+# Application Configuration
+UPLOAD_FOLDER=/opt/church/uploads
+MAX_CONTENT_LENGTH=16777216
+ALLOWED_EXTENSIONS=pdf,png,jpg,jpeg,doc,docx
+
+# Security Configuration
+SESSION_COOKIE_SECURE=True
+REMEMBER_COOKIE_SECURE=True
+SESSION_COOKIE_HTTPONLY=True
+REMEMBER_COOKIE_HTTPONLY=True
+EOL
+
+    # Set proper permissions
+    chown church_app:church_app "$APP_DIR/.env"
+    chmod 600 "$APP_DIR/.env"
+    
+    print_status "Environment file created at $APP_DIR/.env"
+    print_warning "Please update the email configuration in .env with your email credentials"
+}
+
 # Set up Python virtual environment
 setup_venv() {
     print_status "Setting up Python virtual environment..."
@@ -276,6 +326,7 @@ main() {
     install_dependencies
     setup_user
     create_directories
+    setup_env
     setup_venv
     init_database
     setup_backup
@@ -283,7 +334,10 @@ main() {
     setup_service
     
     print_status "Installation completed successfully!"
-    print_status "You can now create an admin user and start using the application."
+    print_status "Important next steps:"
+    print_status "1. Update email settings in /opt/church/.env"
+    print_status "2. Create an admin user with: runuser -u church_app -- /opt/church/venv/bin/python /opt/church/create_admin.py"
+    print_status "3. Visit http://your-domain to access the application"
 }
 
 # Run main installation
