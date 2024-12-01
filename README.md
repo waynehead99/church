@@ -84,46 +84,110 @@ church/
 └── migrations/       # Database migrations
 ```
 
-## Setup Instructions
+## Installation
 
-1. **Clone Repository**
-   ```bash
-   git clone https://github.com/waynehead99/church.git
-   cd church
-   ```
+### Prerequisites
+- Python 3.12 or higher
+- pip (Python package installer)
+- virtualenv
 
-2. **Create Virtual Environment**
-   ```bash
-   python3 -m venv venv
-   source venv/bin/activate  # Linux/Mac
-   # or
-   .\venv\Scripts\activate  # Windows
-   ```
+### Step 1: Clone the Repository
+```bash
+git clone [repository-url]
+cd church
+```
 
-3. **Install Dependencies**
-   ```bash
-   pip install -r requirements.txt
-   ```
+### Step 2: Set Up Virtual Environment
+```bash
+# Create a new virtual environment
+python3 -m venv venv
 
-4. **Configure Environment**
-   ```bash
-   cp .env.example .env
-   # Edit .env with your settings:
-   # - SECRET_KEY
-   # - MAIL_SERVER
-   # - MAIL_USERNAME
-   # - MAIL_PASSWORD
-   ```
+# Activate the virtual environment
+# On Linux/Mac:
+source venv/bin/activate
+# On Windows:
+# .\venv\Scripts\activate
+```
 
-5. **Initialize Database**
-   ```bash
-   flask db upgrade
-   ```
+### Step 3: Install Dependencies
+```bash
+pip install -r requirements.txt
+```
 
-6. **Run Development Server**
-   ```bash
-   flask run
-   ```
+Required packages:
+- Flask==3.0.0
+- Flask-SQLAlchemy==3.1.1
+- Flask-Login==0.6.3
+- Flask-Mail==0.9.1
+- Werkzeug==3.0.1
+- gunicorn==21.2.0
+- python-dotenv==1.0.0
+- SQLAlchemy==2.0.23
+
+### Step 4: Environment Configuration
+Create a `.env` file in the root directory with the following variables:
+```
+SECRET_KEY=your_secret_key_here
+MAIL_SERVER=smtp.gmail.com
+MAIL_PORT=587
+MAIL_USE_TLS=True
+MAIL_USERNAME=your_email@gmail.com
+MAIL_PASSWORD=your_app_specific_password
+MAIL_DEFAULT_SENDER=your_email@gmail.com
+```
+
+### Step 5: Initialize the Database
+```bash
+# Create the database and tables
+python3 init_db.py
+```
+
+### Step 6: Running the Application
+
+#### Development Mode
+```bash
+# Run with Flask development server
+flask run --debug
+```
+
+#### Production Mode with Gunicorn
+```bash
+# Make sure you're in the project directory and virtual environment is activated
+gunicorn --bind 0.0.0.0:8000 app:app --log-level debug
+```
+
+### Common Issues and Solutions
+
+1. **Login Issues**
+   - Ensure the SECRET_KEY is set in your .env file
+   - Verify the database exists and contains user records
+   - Check app.log in the logs directory for detailed error messages
+
+2. **Database Issues**
+   - If tables are missing, run `python3 init_db.py`
+   - Ensure write permissions for the church.db file
+   - Check database connectivity with health check endpoint
+
+3. **Email Configuration**
+   - For Gmail, use App Specific Password
+   - Verify all MAIL_* environment variables are set
+   - Test email configuration with health check endpoint
+
+4. **Permission Issues**
+   - Ensure the logs directory exists and is writable
+   - Check file permissions for church.db
+   - Verify virtual environment permissions
+
+### Health Check Endpoints
+
+The following endpoints are available to verify system status:
+- `/health` - Basic application health
+- `/health/db` - Database connectivity
+- `/health/email` - Email service status
+
+### Logging
+
+Logs are stored in the `logs/app.log` file. For debugging, check this file for detailed error messages and application status.
 
 ## Linux Installation
 
@@ -133,7 +197,7 @@ The easiest way to install the Church Management System is using our automated i
 
 1. **Download the latest release**
    ```bash
-   git clone https://github.com/your-org/church.git
+   git clone https://github.com/waynehead99/church.git
    cd church
    ```
 

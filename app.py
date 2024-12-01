@@ -39,10 +39,11 @@ from utils.password_validation import validate_password, calculate_password_stre
 
 # Set up logging
 log_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'logs')
+os.makedirs(log_dir, exist_ok=True)  # Create logs directory if it doesn't exist
 log_file = os.path.join(log_dir, 'app.log')
 
 logging.basicConfig(
-    level=logging.INFO,
+    level=logging.DEBUG,  # Changed to DEBUG for more detailed logs
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[
         logging.FileHandler(log_file),
@@ -117,26 +118,9 @@ migrate = Migrate(app, db)
 login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'login'  # Specify the login view for unauthorized access
-
-# Admin required decorator
-def admin_required(f):
-    """
-    Decorator to restrict access to admin-only routes.
-    Checks if the current user has admin privileges before allowing access.
-    
-    Args:
-        f: The function to be decorated
-        
-    Returns:
-        decorated_function: The wrapped function with admin check
-    """
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        if not current_user.is_authenticated or not current_user.is_admin:
-            flash('You need administrator privileges to access this page.', 'error')
-            return redirect(url_for('index'))
-        return f(*args, **kwargs)
-    return decorated_function
+login_manager.login_message = 'Please log in to access this page.'
+login_manager.login_message_category = 'info'
+login_manager.session_protection = 'strong'
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -150,7 +134,17 @@ def load_user(user_id):
     Returns:
         User object or None if not found
     """
-    return User.query.get(int(user_id))
+    logger.debug(f"Loading user with ID: {user_id}")
+    try:
+        user = User.query.get(int(user_id))
+        if user:
+            logger.debug(f"Successfully loaded user: {user.email}")
+        else:
+            logger.warning(f"No user found with ID: {user_id}")
+        return user
+    except Exception as e:
+        logger.error(f"Error loading user {user_id}: {str(e)}")
+        return None
 
 def send_registration_confirmation(form_data):
     """
@@ -215,32 +209,42 @@ def login():
         GET: Rendered login form
         POST: Redirects to dashboard on success, back to login on failure
     """
+    logger.debug("Login route accessed")
+    
     # Redirect if user is already logged in
     if current_user.is_authenticated:
+        logger.debug("User already authenticated, redirecting to dashboard")
         return redirect(url_for('dashboard'))
 
     if request.method == 'POST':
+        logger.debug("Processing login POST request")
         email = request.form.get('email')
         password = request.form.get('password')
         
         if not email or not password:
+            logger.warning("Login attempt with missing email or password")
             flash('Please provide both email and password', 'error')
             return redirect(url_for('login'))
         
+        logger.debug(f"Attempting login for email: {email}")
         user = User.query.filter_by(email=email).first()
         
         if user and user.check_password(password):
+            logger.info(f"Successful login for user: {email}")
             login_user(user)
+            logger.debug("User logged in successfully")
+            
             # Get the next page from the URL parameters, defaulting to dashboard
             next_page = request.args.get('next')
             # Ensure the next page is safe (relative URL)
             if not next_page or not next_page.startswith('/'):
                 next_page = url_for('dashboard')
+            logger.debug(f"Redirecting to: {next_page}")
             return redirect(next_page)
         
         # Don't reveal whether user exists or password was wrong
-        flash('Invalid email or password', 'error')
         logger.warning(f"Failed login attempt for email: {email}")
+        flash('Invalid email or password', 'error')
         
     return render_template('login.html')
 

@@ -1,10 +1,10 @@
-Flask==2.3.3
-Flask-SQLAlchemy==3.0.5
-Flask-Login==0.6.2
-Flask-WTF==1.1.1
+Flask==3.0.0
+Flask-SQLAlchemy==3.1.1
+Flask-Login==0.6.3
+Flask-WTF==1.2.1
 Flask-Migrate==4.0.5
-Werkzeug==2.3.7
-email-validator==2.0.0.post2
+Werkzeug==3.0.1
+email-validator==2.1.0.post1
 python-dotenv==1.0.0
 Flask-Mail==0.9.1
 Flask-Limiter==3.5.0
@@ -13,3 +13,10 @@ sentry-sdk[flask]==1.39.1
 Flask-Caching==2.1.0
 redis==5.0.1
 Flask-Redis==0.4.0
+SQLAlchemy==2.0.23
+alembic==1.12.1
+blinker==1.7.0
+click==8.1.7
+itsdangerous==2.1.2
+Jinja2==3.1.2
+MarkupSafe==2.1.3
