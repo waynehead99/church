@@ -1,0 +1,13 @@
+[Unit]
+Description=Church Application
+After=network.target
+
+[Service]
+User=www-data
+WorkingDirectory=/path/to/your/church/directory
+Environment="PATH=/path/to/your/virtual/environment/bin"
+ExecStart=/path/to/your/virtual/environment/bin/gunicorn -c gunicorn.conf.py app:app
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
