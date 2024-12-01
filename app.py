@@ -20,7 +20,7 @@ Version: 1.0.1
 Last Updated: 2024
 """
 
-from flask import Flask, render_template, request, redirect, url_for, flash, jsonify
+from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, session
 from models import db, User, FormData
 from routes.admin import admin_bp
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
@@ -36,6 +36,7 @@ import logging
 import sys
 from flask_migrate import Migrate
 from utils.password_validation import validate_password, calculate_password_strength
+from flask_session import Session
 
 # Set up logging
 log_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'logs')
@@ -68,6 +69,20 @@ application = app
 # Configuration
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY') or os.urandom(24)  # Use environment variable if available, fallback to random
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///church.db'  # SQLite database configuration
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+# Session configuration
+app.config['SESSION_TYPE'] = 'filesystem'
+app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=7)
+app.config['SESSION_COOKIE_SECURE'] = True
+app.config['SESSION_COOKIE_HTTPONLY'] = True
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+app.config['REMEMBER_COOKIE_DURATION'] = timedelta(days=7)
+app.config['REMEMBER_COOKIE_SECURE'] = True
+app.config['REMEMBER_COOKIE_HTTPONLY'] = True
+
+# Initialize Flask-Session
+Session(app)
 
 # Email Configuration
 app.config['MAIL_SERVER'] = os.getenv('MAIL_SERVER', 'smtp.gmail.com')
@@ -197,6 +212,7 @@ def index():
     Returns:
         Rendered index.html template
     """
+    logger.debug(f"Index route accessed. User authenticated: {current_user.is_authenticated}")
     return render_template('index.html')
 
 @app.route('/login', methods=['GET', 'POST'])
@@ -231,8 +247,10 @@ def login():
         
         if user and user.check_password(password):
             logger.info(f"Successful login for user: {email}")
-            login_user(user)
-            logger.debug("User logged in successfully")
+            # Set session as permanent and remember the user
+            session.permanent = True
+            login_user(user, remember=True)
+            logger.debug("User logged in successfully with remember=True")
             
             # Get the next page from the URL parameters, defaulting to dashboard
             next_page = request.args.get('next')
