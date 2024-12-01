@@ -375,7 +375,7 @@ This application uses SQLite as its database, which is suitable for smaller depl
 2. **Application Setup**
    ```bash
    # Clone and setup application
-   git clone https://github.com/your-org/church.git
+   git clone https://github.com/waynehead99/church.git
    cd church
    python3 -m venv venv
    source venv/bin/activate
