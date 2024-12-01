@@ -88,7 +88,7 @@ church/
 
 1. **Clone Repository**
    ```bash
-   git clone https://github.com/your-org/church.git
+   git clone https://github.com/waynehead99/church.git
    cd church
    ```
 
