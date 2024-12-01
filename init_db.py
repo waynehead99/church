@@ -1,5 +1,18 @@
-from app import app, db
-from models import User
+from flask import Flask
+from flask_sqlalchemy import SQLAlchemy
+from models import User, db
+import os
+
+# Initialize Flask app
+app = Flask(__name__)
+
+# Configuration
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///church.db'
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'default-secret-key')
+
+# Initialize extensions
+db.init_app(app)
 
 def init_db():
     with app.app_context():

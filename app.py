@@ -20,34 +20,80 @@ Version: 1.0.1
 Last Updated: 2024
 """
 
-from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, session
-from models import db, User, FormData
-from routes.admin import admin_bp
-from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
-from werkzeug.security import generate_password_hash, check_password_hash
-from datetime import datetime, timedelta
 import os
-from functools import wraps
-import io
-import sys
 import logging
+import io
+from datetime import datetime, timedelta
+from functools import wraps
+
+from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, session
+from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
+from flask_mail import Mail, Message
 from flask_session import Session
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
+from werkzeug.security import generate_password_hash, check_password_hash
 import redis
 
 # Set up logging
 log_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'logs')
-os.makedirs(log_dir, exist_ok=True)  # Create logs directory if it doesn't exist
+os.makedirs(log_dir, exist_ok=True)
 log_file = os.path.join(log_dir, 'app.log')
 
 logging.basicConfig(
-    level=logging.DEBUG,  # Changed to DEBUG for more detailed logs
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    level=logging.DEBUG,
+    format='%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]',
     handlers=[
         logging.FileHandler(log_file),
-        logging.StreamHandler(sys.stdout)
+        logging.StreamHandler()
     ]
 )
+
 logger = logging.getLogger(__name__)
+
+# Initialize Flask app
+app = Flask(__name__)
+
+# Configuration
+app.config['SECRET_KEY'] = os.getenv('SECRET_KEY') or os.urandom(24)
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///church.db'
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+# Redis configuration
+app.config['SESSION_TYPE'] = 'redis'
+app.config['SESSION_REDIS'] = redis.from_url('redis://localhost:6379')
+
+# Session configuration
+app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=24)  # Session timeout after 24 hours
+app.config['SESSION_COOKIE_SECURE'] = True  # Cookies only sent over HTTPS
+app.config['SESSION_COOKIE_HTTPONLY'] = True  # Prevent JavaScript access to session cookie
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'  # CSRF protection
+app.config['SESSION_COOKIE_NAME'] = 'church_session'
+app.config['REMEMBER_COOKIE_DURATION'] = timedelta(days=7)
+app.config['REMEMBER_COOKIE_SECURE'] = True
+app.config['REMEMBER_COOKIE_HTTPONLY'] = True
+app.config['REMEMBER_COOKIE_NAME'] = 'church_remember'
+
+# Initialize extensions
+from models import db
+db.init_app(app)
+Session(app)
+
+# Initialize Flask-Limiter
+limiter = Limiter(
+    app=app,
+    key_func=get_remote_address,
+    default_limits=["200 per day", "50 per hour"],
+    storage_uri="memory://"
+)
+
+# Initialize Flask-Login
+login_manager = LoginManager()
+login_manager.init_app(app)
+login_manager.login_view = 'login'
+login_manager.login_message = 'Please log in to access this page.'
+login_manager.login_message_category = 'info'
+login_manager.session_protection = 'strong'
 
 # Add both potential paths to Python path
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -55,30 +101,6 @@ opt_dir = '/opt/church'
 for path in [current_dir, opt_dir]:
     if path not in sys.path:
         sys.path.append(path)
-
-# Initialize Flask application
-app = Flask(__name__)
-
-# Make the application instance easily importable for Gunicorn
-application = app
-
-# Configuration
-app.config['SECRET_KEY'] = os.getenv('SECRET_KEY') or os.urandom(24)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///church.db'
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-
-# Session configuration
-app.config['SESSION_TYPE'] = 'redis'
-app.config['SESSION_REDIS'] = redis.from_url('redis://localhost:6379')
-app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=24)  # Session timeout after 24 hours
-app.config['SESSION_COOKIE_SECURE'] = True  # Cookies only sent over HTTPS
-app.config['SESSION_COOKIE_HTTPONLY'] = True  # Prevent JavaScript access to session cookie
-app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'  # CSRF protection
-app.config['SESSION_COOKIE_NAME'] = 'church_session'
-app.config['REMEMBER_COOKIE_DURATION'] = timedelta(days=7)
-app.config['REMEMBER_COOKIE_SECURE'] = True  # Set to True in production with HTTPS
-app.config['REMEMBER_COOKIE_HTTPONLY'] = True
-app.config['REMEMBER_COOKIE_NAME'] = 'church_remember'
 
 # Password requirements
 PASSWORD_MIN_LENGTH = 8
@@ -89,18 +111,6 @@ PASSWORD_REQUIREMENTS = {
     'require_digit': True,
     'require_special': True
 }
-
-# Initialize extensions
-db.init_app(app)
-Session(app)
-
-# Initialize Flask-Login
-login_manager = LoginManager()
-login_manager.init_app(app)
-login_manager.login_view = 'login'
-login_manager.login_message = 'Please log in to access this page.'
-login_manager.login_message_category = 'info'
-login_manager.session_protection = 'strong'
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -547,6 +557,7 @@ def signup_post():
     return signup()
 
 # Register blueprints
+from routes.admin import admin_bp
 app.register_blueprint(admin_bp)
 
 if __name__ == '__main__':
