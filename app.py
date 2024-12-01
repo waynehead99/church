@@ -21,6 +21,7 @@ Last Updated: 2024
 """
 
 import os
+import sys
 import logging
 import io
 from datetime import datetime, timedelta
@@ -101,6 +102,7 @@ opt_dir = '/opt/church'
 for path in [current_dir, opt_dir]:
     if path not in sys.path:
         sys.path.append(path)
+        logger.debug(f"Added {path} to Python path")
 
 # Password requirements
 PASSWORD_MIN_LENGTH = 8
