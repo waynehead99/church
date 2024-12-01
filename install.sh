@@ -176,28 +176,30 @@ init_database() {
 setup_nginx() {
     print_status "Configuring Nginx..."
     
-    # Create Nginx configuration
-    cat > /etc/nginx/sites-available/church << EOL
-server {
-    listen 80;
-    server_name _;
-
-    location / {
-        proxy_pass http://127.0.0.1:8000;
-        proxy_set_header Host \$host;
-        proxy_set_header X-Real-IP \$remote_addr;
-        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto \$scheme;
-    }
-
-    location /static {
-        alias $APP_DIR/static;
-    }
-}
-EOL
+    # Create SSL directory
+    mkdir -p /etc/nginx/ssl
     
-    # Enable the site
-    ln -sf /etc/nginx/sites-available/church /etc/nginx/sites-enabled/
+    # Generate self-signed SSL certificate for development
+    print_status "Generating self-signed SSL certificate..."
+    openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+        -keyout /etc/nginx/ssl/key.pem \
+        -out /etc/nginx/ssl/cert.pem \
+        -subj "/C=US/ST=State/L=City/O=Organization/CN=localhost"
+    
+    # Copy project nginx configuration
+    print_status "Installing nginx configuration..."
+    cp "$APP_DIR/nginx.conf" /etc/nginx/conf.d/church.conf
+    
+    # Create static directory if it doesn't exist
+    mkdir -p "$APP_DIR/static"
+    
+    # Ensure proper permissions
+    chown -R www-data:www-data /etc/nginx/ssl
+    chmod 600 /etc/nginx/ssl/key.pem
+    chmod 600 /etc/nginx/ssl/cert.pem
+    
+    # Remove default nginx site if it exists
+    rm -f /etc/nginx/sites-enabled/default
     
     # Test Nginx configuration
     nginx -t
