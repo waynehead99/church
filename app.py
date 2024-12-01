@@ -35,6 +35,7 @@ from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from werkzeug.security import generate_password_hash, check_password_hash
 import redis
+from flask_caching import Cache
 
 # Set up logging
 log_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'logs')
@@ -60,6 +61,25 @@ app.config['SECRET_KEY'] = os.getenv('SECRET_KEY') or os.urandom(24)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///church.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
+# Proxy configuration
+app.config['PREFERRED_URL_SCHEME'] = 'https'
+app.config['USE_X_FORWARDED_HOST'] = True
+app.config['PROXY_FIX_X_FOR'] = 1
+app.config['PROXY_FIX_X_PROTO'] = 1
+app.config['PROXY_FIX_X_HOST'] = 1
+app.config['PROXY_FIX_X_PORT'] = 1
+app.config['PROXY_FIX_X_PREFIX'] = 1
+
+from werkzeug.middleware.proxy_fix import ProxyFix
+app.wsgi_app = ProxyFix(
+    app.wsgi_app,
+    x_for=1,
+    x_proto=1,
+    x_host=1,
+    x_port=1,
+    x_prefix=1
+)
+
 # Redis configuration
 app.config['SESSION_TYPE'] = 'redis'
 app.config['SESSION_REDIS'] = redis.from_url('redis://localhost:6379')
@@ -84,9 +104,13 @@ Session(app)
 limiter = Limiter(
     app=app,
     key_func=get_remote_address,
-    default_limits=["200 per day", "50 per hour"],
-    storage_uri="memory://"
+    default_limits=["200 per day", "50 per hour"]
 )
+
+# Initialize caching
+cache = Cache(app, config={
+    'CACHE_TYPE': 'simple'  # Use simple cache for development
+})
 
 # Initialize Flask-Login
 login_manager = LoginManager()
