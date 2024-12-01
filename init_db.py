@@ -1,5 +1,12 @@
-from app import app, db, User
+from flask import Flask
+from models import db, User
 from werkzeug.security import generate_password_hash
+import os
+
+app = Flask(__name__)
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///church.db'
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+db.init_app(app)
 
 def init_db():
     with app.app_context():

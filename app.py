@@ -72,9 +72,10 @@ from flask_limiter.util import get_remote_address
 import redis
 
 # Initialize Sentry for error tracking
-if os.getenv('FLASK_ENV') == 'production':
+sentry_dsn = os.getenv('SENTRY_DSN')
+if os.getenv('FLASK_ENV') == 'production' and sentry_dsn:
     sentry_sdk.init(
-        dsn=os.getenv('SENTRY_DSN'),
+        dsn=sentry_dsn,
         integrations=[FlaskIntegration()],
         traces_sample_rate=1.0
     )
